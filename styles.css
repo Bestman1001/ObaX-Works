@@ -520,6 +520,130 @@ footer {
   border-radius: 8px;
 }
 
+.leaflet-container {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-x pan-y;
+}
+
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.leaflet-container img {
+  max-width: none !important;
+}
+
+.leaflet-tile-pane {
+  z-index: 200;
+}
+
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-shadow-pane {
+  z-index: 500;
+}
+
+.leaflet-marker-pane {
+  z-index: 600;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 650;
+}
+
+.leaflet-popup-pane {
+  z-index: 700;
+}
+
+.leaflet-control {
+  position: relative;
+  z-index: 800;
+  pointer-events: auto;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  position: absolute;
+  z-index: 900;
+  pointer-events: none;
+}
+
+.leaflet-top {
+  top: 0;
+}
+
+.leaflet-right {
+  right: 0;
+}
+
+.leaflet-bottom {
+  bottom: 0;
+}
+
+.leaflet-left {
+  left: 0;
+}
+
+.leaflet-control-zoom a {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  background: white;
+  border-bottom: 1px solid var(--line);
+  color: var(--deep);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.leaflet-control-attribution {
+  padding: 3px 6px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 0.68rem;
+}
+
+.map-pin {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 999px;
+  background: var(--deep);
+  color: white;
+  box-shadow: 0 8px 18px rgba(6, 76, 72, 0.3);
+}
+
+.map-pin::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gold);
+}
+
 .popup-title {
   display: block;
   margin-bottom: 4px;

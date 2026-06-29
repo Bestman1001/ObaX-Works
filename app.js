@@ -54,6 +54,12 @@ const artisans = [
 const originByState = Object.fromEntries(states.map((state) => [state.name, state.center]));
 let activeOrigin = originByState.Lagos;
 let markers = [];
+const artisanIcon = L.divIcon({
+  className: "map-pin",
+  html: "",
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
 
 const stateFilter = document.querySelector("#stateFilter");
 const areaFilter = document.querySelector("#areaFilter");
@@ -176,7 +182,7 @@ function renderCards(matches) {
 function renderMap(matches) {
   markers.forEach((marker) => marker.remove());
   markers = matches.map((artisan) =>
-    L.marker([artisan.lat, artisan.lng])
+    L.marker([artisan.lat, artisan.lng], { icon: artisanIcon })
       .addTo(map)
       .bindPopup(
         `<span class="popup-title">${artisan.name}</span>${artisan.category}<br>${artisan.distance.toFixed(
