@@ -26,7 +26,13 @@ FixAm 9ja is a map-first Nigerian artisan marketplace by ObaX for finding truste
 - Profiles show service area, skills, verification checks, portfolio items, availability, and marketplace metrics
 - Customers can request a quote from a card or profile
 - Quote requests collect name, phone, location, urgency, and job details
-- The current quote flow prepares a demo request ID; backend delivery through SMS, WhatsApp, email, or dashboard is the next build step
+- Quote requests save to Supabase when the project URL and anon key are configured
+
+## Supabase
+
+Run `supabase/schema.sql` in your Supabase SQL Editor, then paste your Project URL and anon public key into `supabase-config.js`.
+
+The website can insert quote requests into `quote_requests`. Public visitors cannot read, update, or delete quote requests because Row Level Security is enabled with only an insert policy.
 
 ## Run Locally
 
@@ -40,4 +46,4 @@ Then visit `http://localhost:5173`.
 
 ## Tech
 
-This prototype uses plain HTML, CSS, JavaScript, Leaflet, and OpenStreetMap tiles so it can be hosted easily on GitHub Pages, Netlify, Vercel, or any static hosting service.
+This prototype uses plain HTML, CSS, JavaScript, Leaflet, OpenStreetMap tiles, and Supabase so it can be hosted easily on GitHub Pages, Netlify, Vercel, or any static hosting service.

@@ -16,7 +16,7 @@
       integrity="sha256-p4NxAoJBhIINfQJQhv/0Xz4dU1Y3rI6QGzV3G4rjvXw="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=phase1" />
+    <link rel="stylesheet" href="styles.css?v=supabase1" />
   </head>
   <body>
     <header class="topbar">
@@ -254,7 +254,7 @@
             <textarea id="quoteDetails" rows="5" placeholder="Describe the issue, size of job, budget, or photos you will share later." required></textarea>
           </label>
           <button class="primary-action large" type="submit">Send quote request</button>
-          <p class="form-note" id="quoteNote">Demo flow: no message is sent yet. Backend connection comes next.</p>
+          <p class="form-note" id="quoteNote">Your request will be saved once the FixAm 9ja database is connected.</p>
         </form>
       </section>
     </div>
@@ -269,6 +269,8 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script src="app.js?v=phase1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=supabase1"></script>
+    <script src="app.js?v=supabase1"></script>
   </body>
 </html>

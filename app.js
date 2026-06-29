@@ -105,7 +105,14 @@ const profileContent = document.querySelector("#profileContent");
 const quoteForm = document.querySelector("#quoteForm");
 const quoteArtisanText = document.querySelector("#quoteArtisanText");
 const quoteNote = document.querySelector("#quoteNote");
+const quoteSubmitButton = quoteForm.querySelector("button[type='submit']");
 let selectedQuoteArtisan = null;
+
+const supabaseSettings = window.FIXAM_SUPABASE || {};
+const supabaseClient =
+  window.supabase && supabaseSettings.url && supabaseSettings.anonKey
+    ? window.supabase.createClient(supabaseSettings.url, supabaseSettings.anonKey)
+    : null;
 
 states.forEach((state) => {
   stateFilter.add(new Option(state.name, state.name));
@@ -316,15 +323,59 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeModals();
 });
 
-quoteForm.addEventListener("submit", (event) => {
+quoteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!selectedQuoteArtisan) return;
 
   const requestId = `F9-${String(selectedQuoteArtisan.id).padStart(3, "0")}-${Date.now().toString().slice(-4)}`;
-  quoteNote.textContent = `Quote request ${requestId} prepared for ${selectedQuoteArtisan.name}. Backend delivery through SMS, WhatsApp, or dashboard comes next.`;
-  quoteNote.classList.add("success-note");
-  quoteForm.querySelector("button[type='submit']").textContent = "Request prepared";
+  const payload = {
+    request_code: requestId,
+    artisan_id: selectedQuoteArtisan.id,
+    artisan_name: selectedQuoteArtisan.name,
+    artisan_category: selectedQuoteArtisan.category,
+    artisan_state: selectedQuoteArtisan.state,
+    artisan_area: selectedQuoteArtisan.area,
+    customer_name: document.querySelector("#quoteName").value.trim(),
+    customer_phone: document.querySelector("#quotePhone").value.trim(),
+    job_location: document.querySelector("#quoteLocation").value.trim(),
+    urgency: document.querySelector("#quoteUrgency").value,
+    job_details: document.querySelector("#quoteDetails").value.trim(),
+    source: "website",
+  };
+
+  setQuoteStatus("Sending request...", "");
+  quoteSubmitButton.disabled = true;
+  quoteSubmitButton.textContent = "Sending...";
+
+  if (!supabaseClient) {
+    setQuoteStatus(
+      `Quote request ${requestId} prepared for ${selectedQuoteArtisan.name}. Add your Supabase URL and anon key to save it online.`,
+      "success",
+    );
+    quoteSubmitButton.textContent = "Request prepared";
+    quoteSubmitButton.disabled = false;
+    return;
+  }
+
+  const { error } = await supabaseClient.from("quote_requests").insert(payload);
+
+  if (error) {
+    setQuoteStatus(`We could not save this request yet: ${error.message}`, "error");
+    quoteSubmitButton.textContent = "Try again";
+    quoteSubmitButton.disabled = false;
+    return;
+  }
+
+  setQuoteStatus(`Quote request ${requestId} sent to ${selectedQuoteArtisan.name}.`, "success");
+  quoteSubmitButton.textContent = "Request sent";
 });
+
+function setQuoteStatus(message, type) {
+  quoteNote.textContent = message;
+  quoteNote.classList.remove("success-note", "error-note");
+  if (type === "success") quoteNote.classList.add("success-note");
+  if (type === "error") quoteNote.classList.add("error-note");
+}
 
 function openProfile(artisan) {
   profileContent.innerHTML = `
@@ -376,10 +427,10 @@ function openProfile(artisan) {
 function openQuote(artisan) {
   selectedQuoteArtisan = artisan;
   quoteArtisanText.textContent = `Requesting ${artisan.category.toLowerCase()} support from ${artisan.name} in ${artisan.area}, ${artisan.state}.`;
-  quoteNote.textContent = "Demo flow: no message is sent yet. Backend connection comes next.";
-  quoteNote.classList.remove("success-note");
+  setQuoteStatus("Your request will be saved once the FixAm 9ja database is connected.", "");
   quoteForm.reset();
-  quoteForm.querySelector("button[type='submit']").textContent = "Send quote request";
+  quoteSubmitButton.disabled = false;
+  quoteSubmitButton.textContent = "Send quote request";
   showModal(quoteModal);
   document.querySelector("#quoteName").focus();
 }
