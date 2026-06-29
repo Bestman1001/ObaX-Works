@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FixAm 9ja Admin</title>
     <meta name="robots" content="noindex" />
-    <link rel="stylesheet" href="admin.css?v=phase2" />
+    <link rel="stylesheet" href="admin.css?v=phase3" />
   </head>
   <body>
     <header class="admin-topbar">
@@ -76,6 +76,13 @@
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
                 <option value="listed">Listed</option>
+                <option value="public">Public</option>
+                <option value="flagged">Flagged</option>
+                <option value="hidden">Hidden</option>
+                <option value="active">Active</option>
+                <option value="warning">Warning</option>
+                <option value="suspended">Suspended</option>
+                <option value="removed">Removed</option>
               </select>
             </label>
           </div>
@@ -91,17 +98,21 @@
         <nav class="tabs" aria-label="Dashboard views">
           <button class="is-active" type="button" data-view="quotes">Quote requests</button>
           <button type="button" data-view="applications">Artisan applications</button>
+          <button type="button" data-view="reviews">Customer reviews</button>
+          <button type="button" data-view="quality">Artisan quality</button>
         </nav>
 
         <p class="form-note" id="dashboardNote">Loading dashboard...</p>
 
         <section class="work-list" id="quoteList" aria-live="polite"></section>
         <section class="work-list" id="applicationList" aria-live="polite" hidden></section>
+        <section class="work-list" id="reviewList" aria-live="polite" hidden></section>
+        <section class="work-list" id="qualityList" aria-live="polite" hidden></section>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=phase2"></script>
-    <script src="admin.js?v=phase2"></script>
+    <script src="supabase-config.js?v=phase3"></script>
+    <script src="admin.js?v=phase3"></script>
   </body>
 </html>

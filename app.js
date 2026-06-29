@@ -84,6 +84,8 @@ function portfolioFor(category) {
 const originByState = Object.fromEntries(states.map((state) => [state.name, state.center]));
 let activeOrigin = originByState.Lagos;
 let markers = [];
+let reviewStatsByArtisanId = new Map();
+let qualityByArtisanId = new Map();
 const artisanIcon = L.divIcon({
   className: "map-pin",
   html: "",
@@ -185,6 +187,7 @@ function filteredArtisans() {
   const selectedArea = areaFilter.value;
 
   return artisans
+    .filter((artisan) => !["removed", "suspended"].includes(qualityByArtisanId.get(artisan.id)?.standing))
     .filter((artisan) => artisan.state === selectedState)
     .filter((artisan) => selectedArea === "All" || artisan.area === selectedArea)
     .filter((artisan) => {
@@ -216,10 +219,11 @@ function renderCards(matches) {
                 <h3>${artisan.name}</h3>
                 <p>${artisan.category} in ${artisan.area}</p>
               </div>
-              <span class="rating">★ ${artisan.rating}</span>
+              <span class="rating">${displayRating(artisan)}</span>
             </div>
             <div class="badge-row">
               <span class="badge ${artisan.plan === "Pro" ? "gold" : ""}">FixAm ${artisan.plan}</span>
+              ${qualityBadge(artisan)}
               <span class="badge">${artisan.distance.toFixed(1)} miles away</span>
               <span class="badge">${artisan.jobs} jobs</span>
               <span class="badge">${artisan.response}</span>
@@ -428,6 +432,84 @@ joinForm.addEventListener("submit", async (event) => {
   syncJoinAreas();
 });
 
+async function loadTrustSignals() {
+  if (!supabaseClient) return;
+
+  const [reviewResult, qualityResult] = await Promise.all([
+    supabaseClient
+      .from("artisan_reviews")
+      .select("artisan_id, rating, would_recommend, comment, created_at, visibility")
+      .eq("visibility", "public")
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabaseClient.from("artisan_quality_controls").select("artisan_id, standing, admin_note"),
+  ]);
+
+  if (!reviewResult.error) {
+    reviewStatsByArtisanId = buildReviewStats(reviewResult.data || []);
+  }
+
+  if (!qualityResult.error) {
+    qualityByArtisanId = new Map((qualityResult.data || []).map((item) => [item.artisan_id, item]));
+  }
+
+  render();
+}
+
+function buildReviewStats(reviews) {
+  const stats = new Map();
+
+  reviews.forEach((review) => {
+    const current = stats.get(review.artisan_id) || {
+      count: 0,
+      total: 0,
+      recommend: 0,
+      latest: [],
+    };
+    current.count += 1;
+    current.total += review.rating;
+    if (review.would_recommend) current.recommend += 1;
+    if (current.latest.length < 2) current.latest.push(review);
+    stats.set(review.artisan_id, current);
+  });
+
+  return stats;
+}
+
+function displayRating(artisan) {
+  const stats = reviewStatsByArtisanId.get(artisan.id);
+  if (!stats) return `★ ${artisan.rating}`;
+  return `★ ${(stats.total / stats.count).toFixed(1)} (${stats.count})`;
+}
+
+function qualityBadge(artisan) {
+  const standing = qualityByArtisanId.get(artisan.id)?.standing;
+  if (!standing || standing === "active") return "";
+  return `<span class="badge ${standing === "warning" ? "gold" : ""}">${standing}</span>`;
+}
+
+function reviewSummary(artisan) {
+  const stats = reviewStatsByArtisanId.get(artisan.id);
+  if (!stats) {
+    return `<p>No customer reviews yet. Ratings will update automatically after verified customers submit reviews.</p>`;
+  }
+
+  const average = (stats.total / stats.count).toFixed(1);
+  const recommendRate = Math.round((stats.recommend / stats.count) * 100);
+  const latest = stats.latest
+    .map((review) => `<article><strong>★ ${review.rating}</strong><small>${escapeHtml(review.comment)}</small></article>`)
+    .join("");
+
+  return `
+    <div class="profile-metrics compact">
+      <span><strong>${average}</strong> Customer rating</span>
+      <span><strong>${stats.count}</strong> Reviews</span>
+      <span><strong>${recommendRate}%</strong> Recommend</span>
+    </div>
+    <div class="portfolio-grid">${latest}</div>
+  `;
+}
+
 function setQuoteStatus(message, type) {
   quoteNote.textContent = message;
   quoteNote.classList.remove("success-note", "error-note");
@@ -473,6 +555,7 @@ function openProfile(artisan) {
     </div>
     <div class="profile-metrics">
       <span><strong>${artisan.rating}</strong> Rating</span>
+      <span><strong>${displayRating(artisan).replace("★ ", "")}</strong> Live rating</span>
       <span><strong>${artisan.completed}</strong> Completed jobs</span>
       <span><strong>${artisan.response}</strong> Response</span>
       <span><strong>${artisan.radius} mi</strong> Service radius</span>
@@ -495,6 +578,10 @@ function openProfile(artisan) {
       <section>
         <h3>Availability</h3>
         <p>${artisan.availability}. Typical first response is ${artisan.response.toLowerCase()}.</p>
+      </section>
+      <section>
+        <h3>Customer reviews</h3>
+        ${reviewSummary(artisan)}
       </section>
     </div>
     <div class="profile-actions">
@@ -537,3 +624,13 @@ function closeModals() {
 syncAreas();
 syncJoinAreas();
 render();
+loadTrustSignals();
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}

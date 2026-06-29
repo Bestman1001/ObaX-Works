@@ -29,6 +29,8 @@ FixAm 9ja is a map-first Nigerian artisan marketplace by ObaX for finding truste
 - Quote requests save to Supabase when the project URL and anon key are configured
 - Artisan onboarding applications save to Supabase for admin review
 - `admin.html` provides a private operations dashboard for quote requests and artisan applications
+- `review.html` lets customers publish transparent artisan reviews from one-time review links
+- Admin can hide/flag abusive reviews and mark artisans as active, warning, suspended, or removed
 
 ## Supabase
 
@@ -41,6 +43,10 @@ The public website can insert quote requests and artisan applications. Admin use
 3. Signing in through `admin.html`.
 
 Public visitors cannot read, update, or delete quote requests or applications because Row Level Security is enabled.
+
+## Phase 3 Reviews
+
+Reviews are customer-to-artisan by default. Admin does not approve or edit ratings. Admin can only hide/flag unsafe review content and control artisan standing when ratings reveal quality problems.
 
 ## Run Locally
 

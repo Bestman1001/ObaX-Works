@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Review Artisan | FixAm 9ja</title>
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="review.css?v=phase3" />
+  </head>
+  <body>
+    <header class="review-topbar">
+      <a class="brand" href="index.html" aria-label="FixAm 9ja home">
+        <span class="brand-mark">F9</span>
+        <span>
+          <strong>FixAm 9ja</strong>
+          <small>Customer review</small>
+        </span>
+      </a>
+    </header>
+
+    <main class="review-shell">
+      <section class="review-intro">
+        <p class="eyebrow">Transparent customer rating</p>
+        <h1>Rate your artisan experience.</h1>
+        <p id="reviewContext">
+          This review is tied to your FixAm 9ja quote request and will publish automatically.
+        </p>
+      </section>
+
+      <form class="review-form" id="reviewForm">
+        <label>
+          <span>Your name</span>
+          <input id="customerName" type="text" placeholder="e.g. Ada Okafor" required />
+        </label>
+        <label>
+          <span>Overall rating</span>
+          <select id="rating" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Fair</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very poor</option>
+          </select>
+        </label>
+        <label>
+          <span>Work quality</span>
+          <select id="qualityRating" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Fair</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very poor</option>
+          </select>
+        </label>
+        <label>
+          <span>Timeliness</span>
+          <select id="timelinessRating" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Fair</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very poor</option>
+          </select>
+        </label>
+        <label>
+          <span>Professionalism</span>
+          <select id="professionalismRating" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Fair</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very poor</option>
+          </select>
+        </label>
+        <label>
+          <span>Pricing fairness</span>
+          <select id="priceRating" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Fair</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very poor</option>
+          </select>
+        </label>
+        <label>
+          <span>Would recommend?</span>
+          <select id="wouldRecommend" required>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+        <label class="full-span">
+          <span>Your comment</span>
+          <textarea id="comment" rows="5" placeholder="Share what happened, what went well, or what should improve." required></textarea>
+        </label>
+        <button class="primary-action large" type="submit">Publish review</button>
+        <p class="form-note" id="reviewNote">
+          Reviews publish automatically. FixAm 9ja may hide only abusive, fake, threatening, or private-information content.
+        </p>
+      </form>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=phase3"></script>
+    <script src="review.js?v=phase3"></script>
+  </body>
+</html>

@@ -6,6 +6,8 @@ const supabaseClient =
 
 const quoteStatuses = ["new", "contacted", "accepted", "declined", "completed", "cancelled"];
 const applicationStatuses = ["new", "reviewing", "approved", "rejected", "listed"];
+const reviewVisibilityStatuses = ["public", "flagged", "hidden"];
+const artisanStandingStatuses = ["active", "warning", "suspended", "removed"];
 const states = ["Lagos", "Abuja/FCT", "Edo", "Ogun", "Delta", "Rivers"];
 
 const authPanel = document.querySelector("#authPanel");
@@ -19,12 +21,16 @@ const refreshButton = document.querySelector("#refreshButton");
 const magicLinkButton = document.querySelector("#magicLinkButton");
 const quoteList = document.querySelector("#quoteList");
 const applicationList = document.querySelector("#applicationList");
+const reviewList = document.querySelector("#reviewList");
+const qualityList = document.querySelector("#qualityList");
 const metricsGrid = document.querySelector("#metricsGrid");
 const stateFilter = document.querySelector("#stateFilter");
 const statusFilter = document.querySelector("#statusFilter");
 
 let quotes = [];
 let applications = [];
+let reviews = [];
+let qualityControls = [];
 let activeView = "quotes";
 
 states.forEach((state) => stateFilter.add(new Option(state, state)));
@@ -95,8 +101,17 @@ document.querySelectorAll("[data-view]").forEach((button) => {
     document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("is-active", item === button));
     quoteList.hidden = activeView !== "quotes";
     applicationList.hidden = activeView !== "applications";
+    reviewList.hidden = activeView !== "reviews";
+    qualityList.hidden = activeView !== "quality";
     renderDashboard();
   });
+});
+
+quoteList.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-review-link]");
+  if (!button) return;
+
+  await createReviewLink(button.dataset.reviewLink);
 });
 
 quoteList.addEventListener("change", async (event) => {
@@ -109,6 +124,18 @@ applicationList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-application-status]");
   if (!select) return;
   await updateStatus("artisan_applications", select.dataset.applicationStatus, select.value);
+});
+
+reviewList.addEventListener("change", async (event) => {
+  const select = event.target.closest("[data-review-visibility]");
+  if (!select) return;
+  await updateStatus("artisan_reviews", select.dataset.reviewVisibility, select.value, "visibility");
+});
+
+qualityList.addEventListener("change", async (event) => {
+  const select = event.target.closest("[data-artisan-standing]");
+  if (!select) return;
+  await updateArtisanStanding(Number(select.dataset.artisanStanding), select.value);
 });
 
 if (supabaseClient) {
@@ -141,11 +168,11 @@ async function loadDashboard() {
   sessionEmail.textContent = session.user.email || "Signed in";
   signOutButton.hidden = false;
 
-  const [quoteResult, applicationResult] = await Promise.all([
+  const [quoteResult, applicationResult, reviewResult, qualityResult] = await Promise.all([
     supabaseClient
       .from("quote_requests")
       .select(
-        "id, request_code, artisan_name, artisan_category, artisan_state, artisan_area, customer_name, customer_phone, job_location, urgency, job_details, status, created_at",
+        "id, request_code, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, customer_name, customer_phone, job_location, urgency, job_details, status, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(100),
@@ -156,10 +183,21 @@ async function loadDashboard() {
       )
       .order("created_at", { ascending: false })
       .limit(100),
+    supabaseClient
+      .from("artisan_reviews")
+      .select(
+        "id, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, customer_name, rating, quality_rating, timeliness_rating, professionalism_rating, price_fairness_rating, would_recommend, comment, visibility, created_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabaseClient
+      .from("artisan_quality_controls")
+      .select("artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, standing, admin_note, updated_at"),
   ]);
 
-  if (quoteResult.error || applicationResult.error) {
-    const message = quoteResult.error?.message || applicationResult.error?.message;
+  if (quoteResult.error || applicationResult.error || reviewResult.error || qualityResult.error) {
+    const message =
+      quoteResult.error?.message || applicationResult.error?.message || reviewResult.error?.message || qualityResult.error?.message;
     setNote(
       dashboardNote,
       `${message}. Confirm that the latest Supabase schema was run and your user exists in admin_profiles.`,
@@ -167,19 +205,29 @@ async function loadDashboard() {
     );
     quotes = [];
     applications = [];
+    reviews = [];
+    qualityControls = [];
     renderDashboard();
     return;
   }
 
   quotes = quoteResult.data || [];
   applications = applicationResult.data || [];
-  setNote(dashboardNote, `Loaded ${quotes.length} quote requests and ${applications.length} artisan applications.`, "success");
+  reviews = reviewResult.data || [];
+  qualityControls = qualityResult.data || [];
+  setNote(
+    dashboardNote,
+    `Loaded ${quotes.length} quotes, ${applications.length} applications, and ${reviews.length} reviews.`,
+    "success",
+  );
   renderDashboard();
 }
 
 function renderDashboard() {
   const filteredQuotes = filterRows(quotes, "artisan_state");
   const filteredApplications = filterRows(applications, "state");
+  const filteredReviews = filterRows(reviews, "artisan_state", "visibility");
+  const filteredQuality = filterRows(buildQualityRows(), "artisan_state", "standing");
 
   quoteList.innerHTML = filteredQuotes.length
     ? filteredQuotes.map(renderQuoteCard).join("")
@@ -189,13 +237,21 @@ function renderDashboard() {
     ? filteredApplications.map(renderApplicationCard).join("")
     : `<article class="empty-state">No artisan applications match the current filters.</article>`;
 
+  reviewList.innerHTML = filteredReviews.length
+    ? filteredReviews.map(renderReviewCard).join("")
+    : `<article class="empty-state">No customer reviews match the current filters.</article>`;
+
+  qualityList.innerHTML = filteredQuality.length
+    ? filteredQuality.map(renderQualityCard).join("")
+    : `<article class="empty-state">No artisan quality records match the current filters.</article>`;
+
   renderMetrics();
 }
 
-function filterRows(rows, stateKey) {
+function filterRows(rows, stateKey, statusKey = "status") {
   return rows
     .filter((row) => stateFilter.value === "all" || row[stateKey] === stateFilter.value)
-    .filter((row) => statusFilter.value === "all" || row.status === statusFilter.value);
+    .filter((row) => statusFilter.value === "all" || row[statusKey] === statusFilter.value);
 }
 
 function renderMetrics() {
@@ -244,6 +300,8 @@ function renderQuoteCard(quote) {
             ${quoteStatuses.map((status) => option(status, quote.status)).join("")}
           </select>
         </label>
+        <button class="secondary-action" type="button" data-review-link="${quote.id}">Copy review link</button>
+        ${quote.review_token ? `<p class="mini-note">Review link ready</p>` : `<p class="mini-note">Creates one-time customer link</p>`}
       </div>
     </article>
   `;
@@ -279,20 +337,182 @@ function renderApplicationCard(application) {
   `;
 }
 
-async function updateStatus(table, id, status) {
+function renderReviewCard(review) {
+  return `
+    <article class="work-card">
+      <div>
+        <div class="badge-row">
+          <span class="badge gold">${review.visibility}</span>
+          <span class="badge">★ ${review.rating}</span>
+          <span class="badge">${formatDate(review.created_at)}</span>
+        </div>
+        <h3>${escapeHtml(review.customer_name)} reviewed ${escapeHtml(review.artisan_name)}</h3>
+        <p>${escapeHtml(review.comment)}</p>
+        <div class="work-meta">
+          <span class="badge">Quality ${review.quality_rating}</span>
+          <span class="badge">Time ${review.timeliness_rating}</span>
+          <span class="badge">Professional ${review.professionalism_rating}</span>
+          <span class="badge">Price ${review.price_fairness_rating}</span>
+          <span class="badge">${review.would_recommend ? "Recommends" : "Would not recommend"}</span>
+        </div>
+      </div>
+      <div class="work-actions">
+        <label>
+          <span>Visibility</span>
+          <select data-review-visibility="${review.id}">
+            ${reviewVisibilityStatuses.map((status) => option(status, review.visibility)).join("")}
+          </select>
+        </label>
+      </div>
+    </article>
+  `;
+}
+
+function renderQualityCard(artisan) {
+  const stats = reviewStatsFor(artisan.artisan_id);
+  return `
+    <article class="work-card">
+      <div>
+        <div class="badge-row">
+          <span class="badge gold">${artisan.standing}</span>
+          <span class="badge">${stats.count} reviews</span>
+          <span class="badge">★ ${stats.average}</span>
+        </div>
+        <h3>${escapeHtml(artisan.artisan_name)}</h3>
+        <p>${escapeHtml(artisan.artisan_category)} in ${escapeHtml(artisan.artisan_area)}, ${escapeHtml(artisan.artisan_state)}</p>
+        <div class="work-meta">
+          <span class="badge">${stats.low} low reviews</span>
+          <span class="badge">${stats.recommendRate}% recommend</span>
+        </div>
+      </div>
+      <div class="work-actions">
+        <label>
+          <span>Standing</span>
+          <select data-artisan-standing="${artisan.artisan_id}">
+            ${artisanStandingStatuses.map((status) => option(status, artisan.standing)).join("")}
+          </select>
+        </label>
+      </div>
+    </article>
+  `;
+}
+
+function buildQualityRows() {
+  const byId = new Map();
+
+  [...quotes, ...reviews].forEach((item) => {
+    if (!item.artisan_id) return;
+    byId.set(item.artisan_id, {
+      artisan_id: item.artisan_id,
+      artisan_name: item.artisan_name,
+      artisan_category: item.artisan_category,
+      artisan_state: item.artisan_state,
+      artisan_area: item.artisan_area,
+      standing: "active",
+    });
+  });
+
+  qualityControls.forEach((item) => {
+    byId.set(item.artisan_id, { ...byId.get(item.artisan_id), ...item });
+  });
+
+  return [...byId.values()];
+}
+
+function reviewStatsFor(artisanId) {
+  const items = reviews.filter((review) => review.artisan_id === artisanId && review.visibility === "public");
+  const count = items.length;
+  const total = items.reduce((sum, review) => sum + review.rating, 0);
+  const recommend = items.filter((review) => review.would_recommend).length;
+  const low = items.filter((review) => review.rating <= 2).length;
+
+  return {
+    count,
+    low,
+    average: count ? (total / count).toFixed(1) : "0.0",
+    recommendRate: count ? Math.round((recommend / count) * 100) : 0,
+  };
+}
+
+async function updateStatus(table, id, status, field = "status") {
   setNote(dashboardNote, "Updating status...", "");
-  const { error } = await supabaseClient.from(table).update({ status }).eq("id", id);
+  const { error } = await supabaseClient.from(table).update({ [field]: status }).eq("id", id);
 
   if (error) {
     setNote(dashboardNote, error.message, "error");
     return;
   }
 
-  const collection = table === "quote_requests" ? quotes : applications;
+  const collection = table === "quote_requests" ? quotes : table === "artisan_reviews" ? reviews : applications;
   const row = collection.find((item) => item.id === id);
-  if (row) row.status = status;
+  if (row) row[field] = status;
 
   setNote(dashboardNote, "Status updated.", "success");
+  renderDashboard();
+}
+
+async function updateArtisanStanding(artisanId, standing) {
+  const row = buildQualityRows().find((item) => item.artisan_id === artisanId);
+  if (!row) return;
+
+  setNote(dashboardNote, "Updating artisan standing...", "");
+  const payload = {
+    artisan_id: artisanId,
+    artisan_name: row.artisan_name,
+    artisan_category: row.artisan_category,
+    artisan_state: row.artisan_state,
+    artisan_area: row.artisan_area,
+    standing,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient.from("artisan_quality_controls").upsert(payload);
+
+  if (error) {
+    setNote(dashboardNote, error.message, "error");
+    return;
+  }
+
+  const existing = qualityControls.find((item) => item.artisan_id === artisanId);
+  if (existing) Object.assign(existing, payload);
+  else qualityControls.push(payload);
+
+  setNote(dashboardNote, "Artisan standing updated.", "success");
+  renderDashboard();
+}
+
+async function createReviewLink(quoteId) {
+  const quote = quotes.find((item) => item.id === quoteId);
+  if (!quote) return;
+
+  let token = quote.review_token;
+  if (!token) {
+    token = `rv-${quote.request_code.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}`;
+    const { error } = await supabaseClient.from("quote_requests").update({ review_token: token }).eq("id", quote.id);
+
+    if (error) {
+      setNote(dashboardNote, error.message, "error");
+      return;
+    }
+
+    quote.review_token = token;
+  }
+
+  const url = new URL("review.html", window.location.href);
+  url.searchParams.set("token", token);
+  url.searchParams.set("quote_id", quote.id);
+  url.searchParams.set("artisan_id", quote.artisan_id);
+  url.searchParams.set("artisan_name", quote.artisan_name);
+  url.searchParams.set("artisan_category", quote.artisan_category);
+  url.searchParams.set("artisan_state", quote.artisan_state);
+  url.searchParams.set("artisan_area", quote.artisan_area);
+
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    setNote(dashboardNote, "Review link copied. Send it to the customer after the job is complete.", "success");
+  } catch (_error) {
+    setNote(dashboardNote, `Review link ready: ${url.toString()}`, "success");
+  }
   renderDashboard();
 }
 

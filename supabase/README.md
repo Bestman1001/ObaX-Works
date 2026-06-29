@@ -18,4 +18,12 @@ where email = 'you@example.com'
 on conflict (user_id) do update set email = excluded.email;
 ```
 
-The public website only gets insert access to `quote_requests` and `artisan_applications`. Anonymous visitors cannot read, update, or delete quote requests or applications because no public policies are created for those actions.
+The public website only gets insert access to `quote_requests`, `artisan_applications`, and customer reviews. Anonymous visitors can read public review summaries and artisan standing so marketplace ratings can update. Anonymous visitors cannot read private quote/customer details.
+
+## Review Flow
+
+1. Admin opens `admin.html`.
+2. Admin copies a review link from a quote request after the job is done.
+3. Customer opens the link and submits `review.html`.
+4. Review publishes automatically.
+5. Admin can hide/flag unsafe reviews, or mark an artisan as warning, suspended, or removed.

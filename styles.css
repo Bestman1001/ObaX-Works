@@ -617,6 +617,11 @@ footer {
   margin: 24px 0;
 }
 
+.profile-metrics.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 12px;
+}
+
 .profile-metrics span {
   padding: 14px;
   background: var(--soft);
@@ -904,6 +909,7 @@ footer {
 
   .profile-hero,
   .profile-metrics,
+  .profile-metrics.compact,
   .profile-grid,
   .quote-form {
     grid-template-columns: 1fr;

@@ -339,6 +339,13 @@ select:focus {
   gap: 8px;
 }
 
+.mini-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .empty-state {
   padding: 18px;
   background: rgba(255, 255, 255, 0.04);
