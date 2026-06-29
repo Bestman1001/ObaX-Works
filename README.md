@@ -1,6 +1,6 @@
-# ObaX Works
+# Fixam 9ja
 
-ObaX Works is a map-first Nigerian artisan marketplace prototype for finding trusted skilled workers by state, area, trade, rating, response time, and distance.
+Fixam 9ja is a map-first Nigerian artisan marketplace by ObaX for finding trusted skilled workers by state, area, trade, rating, response time, and distance.
 
 ## Launch Coverage
 
