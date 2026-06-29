@@ -164,7 +164,7 @@ function renderCards(matches) {
               <span class="rating">★ ${artisan.rating}</span>
             </div>
             <div class="badge-row">
-              <span class="badge ${artisan.plan === "Pro" ? "gold" : ""}">Fixam ${artisan.plan}</span>
+              <span class="badge ${artisan.plan === "Pro" ? "gold" : ""}">FixAm ${artisan.plan}</span>
               <span class="badge">${artisan.distance.toFixed(1)} miles away</span>
               <span class="badge">${artisan.jobs} jobs</span>
               <span class="badge">${artisan.response}</span>
