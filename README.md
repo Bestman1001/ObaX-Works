@@ -20,6 +20,14 @@ FixAm 9ja is a map-first Nigerian artisan marketplace by ObaX for finding truste
 - State-by-state marketplace structure that can expand across Nigeria
 - Trust features including verification badges, completed jobs, ratings, response times, and profile signals
 
+## Phase 1 Flow
+
+- Artisan cards open detailed profile modals
+- Profiles show service area, skills, verification checks, portfolio items, availability, and marketplace metrics
+- Customers can request a quote from a card or profile
+- Quote requests collect name, phone, location, urgency, and job details
+- The current quote flow prepares a demo request ID; backend delivery through SMS, WhatsApp, email, or dashboard is the next build step
+
 ## Run Locally
 
 Open `index.html` in a browser, or serve the folder with any static web server.

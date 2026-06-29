@@ -49,7 +49,37 @@ const artisans = [
   jobs,
   response,
   plan,
+  initials: name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join(""),
+  bio: `${name} is a ${plan.toLowerCase()} ${category.toLowerCase()} serving ${area} and nearby communities with verified FixAm 9ja marketplace signals.`,
+  skills: serviceSkills(category),
+  availability: index % 3 === 0 ? "Available today" : index % 3 === 1 ? "Available this week" : "Taking scheduled jobs",
+  radius: 8 + (index % 5) * 3,
+  completed: jobs + 14 + index,
+  verification: ["Phone checked", "Location checked", plan === "Basic" ? "Profile reviewed" : "ID reviewed"],
+  portfolio: portfolioFor(category),
 }));
+
+function serviceSkills(category) {
+  const skills = {
+    Electrician: ["House wiring", "Fault tracing", "Inverter setup"],
+    "AC Technician": ["AC servicing", "Gas refill", "Installation"],
+    Tailor: ["Native wear", "Alterations", "Uniforms"],
+    Plumber: ["Leak repair", "Pipe fitting", "Pump setup"],
+    "Solar Installer": ["Panel setup", "Battery wiring", "Load audit"],
+    Painter: ["Interior finish", "Exterior painting", "Wall prep"],
+    Carpenter: ["Cabinets", "Doors", "Furniture repair"],
+    Mechanic: ["Diagnostics", "Engine service", "Brake repair"],
+  };
+  return skills[category] || ["Inspection", "Repairs", "Installation"];
+}
+
+function portfolioFor(category) {
+  return [`${category} inspection`, "Completed customer job", "Tools and work setup"];
+}
 
 const originByState = Object.fromEntries(states.map((state) => [state.name, state.center]));
 let activeOrigin = originByState.Lagos;
@@ -69,6 +99,13 @@ const artisanList = document.querySelector("#artisanList");
 const resultCount = document.querySelector("#resultCount");
 const activeRegion = document.querySelector("#activeRegion");
 const mapStatus = document.querySelector("#mapStatus");
+const profileModal = document.querySelector("#profileModal");
+const quoteModal = document.querySelector("#quoteModal");
+const profileContent = document.querySelector("#profileContent");
+const quoteForm = document.querySelector("#quoteForm");
+const quoteArtisanText = document.querySelector("#quoteArtisanText");
+const quoteNote = document.querySelector("#quoteNote");
+let selectedQuoteArtisan = null;
 
 states.forEach((state) => {
   stateFilter.add(new Option(state.name, state.name));
@@ -170,8 +207,8 @@ function renderCards(matches) {
               <span class="badge">${artisan.response}</span>
             </div>
             <div class="card-actions">
-              <button type="button">Request quote</button>
-              <button type="button">View profile</button>
+              <button type="button" data-action="quote" data-artisan-id="${artisan.id}">Request quote</button>
+              <button type="button" data-action="profile" data-artisan-id="${artisan.id}">View profile</button>
             </div>
           </article>
         `,
@@ -250,6 +287,117 @@ document.querySelector("#locateButton").addEventListener("click", () => {
   activeOrigin = originByState[stateFilter.value];
   render();
 });
+
+artisanList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-action][data-artisan-id]");
+  if (!button) return;
+
+  const artisan = artisans.find((item) => item.id === Number(button.dataset.artisanId));
+  if (!artisan) return;
+
+  if (button.dataset.action === "profile") {
+    openProfile(artisan);
+  } else {
+    openQuote(artisan);
+  }
+});
+
+document.querySelectorAll("[data-close-modal]").forEach((button) => {
+  button.addEventListener("click", closeModals);
+});
+
+[profileModal, quoteModal].forEach((modal) => {
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeModals();
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeModals();
+});
+
+quoteForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!selectedQuoteArtisan) return;
+
+  const requestId = `F9-${String(selectedQuoteArtisan.id).padStart(3, "0")}-${Date.now().toString().slice(-4)}`;
+  quoteNote.textContent = `Quote request ${requestId} prepared for ${selectedQuoteArtisan.name}. Backend delivery through SMS, WhatsApp, or dashboard comes next.`;
+  quoteNote.classList.add("success-note");
+  quoteForm.querySelector("button[type='submit']").textContent = "Request prepared";
+});
+
+function openProfile(artisan) {
+  profileContent.innerHTML = `
+    <div class="profile-hero">
+      <div class="profile-avatar">${artisan.initials}</div>
+      <div>
+        <p class="eyebrow">${artisan.category} in ${artisan.area}</p>
+        <h2 id="profileTitle">${artisan.name}</h2>
+        <p>${artisan.bio}</p>
+      </div>
+    </div>
+    <div class="profile-metrics">
+      <span><strong>${artisan.rating}</strong> Rating</span>
+      <span><strong>${artisan.completed}</strong> Completed jobs</span>
+      <span><strong>${artisan.response}</strong> Response</span>
+      <span><strong>${artisan.radius} mi</strong> Service radius</span>
+    </div>
+    <div class="profile-grid">
+      <section>
+        <h3>Skills</h3>
+        <div class="badge-row">${artisan.skills.map((skill) => `<span class="badge">${skill}</span>`).join("")}</div>
+      </section>
+      <section>
+        <h3>Verification</h3>
+        <div class="check-list">${artisan.verification.map((item) => `<span>${item}</span>`).join("")}</div>
+      </section>
+      <section>
+        <h3>Portfolio</h3>
+        <div class="portfolio-grid">${artisan.portfolio
+          .map((item) => `<article><strong>${item}</strong><small>${artisan.area}, ${artisan.state}</small></article>`)
+          .join("")}</div>
+      </section>
+      <section>
+        <h3>Availability</h3>
+        <p>${artisan.availability}. Typical first response is ${artisan.response.toLowerCase()}.</p>
+      </section>
+    </div>
+    <div class="profile-actions">
+      <button class="primary-action large" type="button" data-profile-quote="${artisan.id}">Request quote</button>
+      <button class="secondary-action large" type="button" data-close-modal>Back to results</button>
+    </div>
+  `;
+
+  profileContent.querySelector("[data-profile-quote]").addEventListener("click", () => openQuote(artisan));
+  profileContent.querySelector("[data-close-modal]").addEventListener("click", closeModals);
+  showModal(profileModal);
+}
+
+function openQuote(artisan) {
+  selectedQuoteArtisan = artisan;
+  quoteArtisanText.textContent = `Requesting ${artisan.category.toLowerCase()} support from ${artisan.name} in ${artisan.area}, ${artisan.state}.`;
+  quoteNote.textContent = "Demo flow: no message is sent yet. Backend connection comes next.";
+  quoteNote.classList.remove("success-note");
+  quoteForm.reset();
+  quoteForm.querySelector("button[type='submit']").textContent = "Send quote request";
+  showModal(quoteModal);
+  document.querySelector("#quoteName").focus();
+}
+
+function showModal(modal) {
+  closeModals();
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+
+function closeModals() {
+  [profileModal, quoteModal].forEach((modal) => {
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+  });
+  document.body.classList.remove("modal-open");
+}
 
 syncAreas();
 render();

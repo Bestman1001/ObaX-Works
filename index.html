@@ -16,7 +16,7 @@
       integrity="sha256-p4NxAoJBhIINfQJQhv/0Xz4dU1Y3rI6QGzV3G4rjvXw="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=fixAm9ja" />
+    <link rel="stylesheet" href="styles.css?v=phase1" />
   </head>
   <body>
     <header class="topbar">
@@ -163,12 +163,12 @@
           </article>
           <article class="plan featured">
             <h3>Verified</h3>
-            <p class="price">₦3,500/mo</p>
+            <p class="price">NGN 3,500/mo</p>
             <p>Verification badge, higher ranking, portfolio boost, reviews, and local trust placement.</p>
           </article>
           <article class="plan">
             <h3>Pro</h3>
-            <p class="price">₦8,500/mo</p>
+            <p class="price">NGN 8,500/mo</p>
             <p>Featured listings, quote requests, faster lead alerts, service analytics, and priority support.</p>
           </article>
           <article class="plan">
@@ -213,6 +213,52 @@
       </section>
     </main>
 
+    <div class="modal-shell" id="profileModal" aria-hidden="true">
+      <section class="modal-panel profile-panel" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <button class="modal-close" type="button" data-close-modal aria-label="Close profile">Close</button>
+        <div id="profileContent"></div>
+      </section>
+    </div>
+
+    <div class="modal-shell" id="quoteModal" aria-hidden="true">
+      <section class="modal-panel quote-panel" role="dialog" aria-modal="true" aria-labelledby="quoteTitle">
+        <button class="modal-close" type="button" data-close-modal aria-label="Close quote form">Close</button>
+        <div class="quote-heading">
+          <p class="eyebrow">Request quote</p>
+          <h2 id="quoteTitle">Tell the artisan what you need.</h2>
+          <p id="quoteArtisanText">Your request will be prepared for the selected artisan.</p>
+        </div>
+        <form class="quote-form" id="quoteForm">
+          <label>
+            <span>Your name</span>
+            <input id="quoteName" type="text" placeholder="e.g. Ada Okafor" required />
+          </label>
+          <label>
+            <span>Phone number</span>
+            <input id="quotePhone" type="tel" placeholder="+234..." required />
+          </label>
+          <label>
+            <span>Job location</span>
+            <input id="quoteLocation" type="text" placeholder="Area, city, landmark" required />
+          </label>
+          <label>
+            <span>Urgency</span>
+            <select id="quoteUrgency">
+              <option>Today</option>
+              <option>This week</option>
+              <option>Flexible</option>
+            </select>
+          </label>
+          <label class="full-span">
+            <span>Job details</span>
+            <textarea id="quoteDetails" rows="5" placeholder="Describe the issue, size of job, budget, or photos you will share later." required></textarea>
+          </label>
+          <button class="primary-action large" type="submit">Send quote request</button>
+          <p class="form-note" id="quoteNote">Demo flow: no message is sent yet. Backend connection comes next.</p>
+        </form>
+      </section>
+    </div>
+
     <footer>
       <strong>FixAm 9ja</strong>
       <span>Built by ObaX for Nigerian trust, local discovery, and skilled-worker growth.</span>
@@ -223,6 +269,6 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script src="app.js?v=fixAm9ja"></script>
+    <script src="app.js?v=phase1"></script>
   </body>
 </html>
