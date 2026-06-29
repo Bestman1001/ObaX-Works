@@ -27,12 +27,20 @@ FixAm 9ja is a map-first Nigerian artisan marketplace by ObaX for finding truste
 - Customers can request a quote from a card or profile
 - Quote requests collect name, phone, location, urgency, and job details
 - Quote requests save to Supabase when the project URL and anon key are configured
+- Artisan onboarding applications save to Supabase for admin review
+- `admin.html` provides a private operations dashboard for quote requests and artisan applications
 
 ## Supabase
 
 Run `supabase/schema.sql` in your Supabase SQL Editor, then paste your Project URL and anon public key into `supabase-config.js`.
 
-The website can insert quote requests into `quote_requests`. Public visitors cannot read, update, or delete quote requests because Row Level Security is enabled with only an insert policy.
+The public website can insert quote requests and artisan applications. Admin users can read and update them only after:
+
+1. Creating a Supabase Auth user.
+2. Adding that user to `public.admin_profiles`.
+3. Signing in through `admin.html`.
+
+Public visitors cannot read, update, or delete quote requests or applications because Row Level Security is enabled.
 
 ## Run Locally
 

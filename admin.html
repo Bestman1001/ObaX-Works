@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FixAm 9ja Admin</title>
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="admin.css?v=phase2" />
+  </head>
+  <body>
+    <header class="admin-topbar">
+      <a class="brand" href="index.html" aria-label="FixAm 9ja home">
+        <span class="brand-mark">F9</span>
+        <span>
+          <strong>FixAm 9ja</strong>
+          <small>Operations Dashboard</small>
+        </span>
+      </a>
+      <div class="admin-session">
+        <span id="sessionEmail">Signed out</span>
+        <button class="secondary-action" type="button" id="refreshButton">Refresh</button>
+        <button class="primary-action" type="button" id="signOutButton" hidden>Sign out</button>
+      </div>
+    </header>
+
+    <main class="admin-shell">
+      <section class="auth-panel" id="authPanel">
+        <div>
+          <p class="eyebrow">Admin access</p>
+          <h1>Manage quote requests and artisan applications.</h1>
+          <p>
+            Sign in with a Supabase Auth admin user that also exists in `admin_profiles`.
+          </p>
+        </div>
+        <form class="auth-form" id="authForm">
+          <label>
+            <span>Email</span>
+            <input id="adminEmail" type="email" placeholder="you@example.com" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="adminPassword" type="password" placeholder="Optional for magic link" />
+          </label>
+          <div class="auth-actions">
+            <button class="primary-action" type="submit">Sign in</button>
+            <button class="secondary-action" type="button" id="magicLinkButton">Send magic link</button>
+          </div>
+          <p class="form-note" id="authNote">Use your private admin login, not a customer account.</p>
+        </form>
+      </section>
+
+      <section class="dashboard-panel" id="dashboardPanel" hidden>
+        <div class="dashboard-heading">
+          <div>
+            <p class="eyebrow">Live operations</p>
+            <h1>FixAm request desk</h1>
+          </div>
+          <div class="filters">
+            <label>
+              <span>State</span>
+              <select id="stateFilter">
+                <option value="all">All states</option>
+              </select>
+            </label>
+            <label>
+              <span>Status</span>
+              <select id="statusFilter">
+                <option value="all">All statuses</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="accepted">Accepted</option>
+                <option value="declined">Declined</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="reviewing">Reviewing</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="listed">Listed</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="metrics-grid" id="metricsGrid">
+          <article><strong>0</strong><span>New quotes</span></article>
+          <article><strong>0</strong><span>Applications</span></article>
+          <article><strong>0</strong><span>In progress</span></article>
+          <article><strong>0</strong><span>Completed/listed</span></article>
+        </div>
+
+        <nav class="tabs" aria-label="Dashboard views">
+          <button class="is-active" type="button" data-view="quotes">Quote requests</button>
+          <button type="button" data-view="applications">Artisan applications</button>
+        </nav>
+
+        <p class="form-note" id="dashboardNote">Loading dashboard...</p>
+
+        <section class="work-list" id="quoteList" aria-live="polite"></section>
+        <section class="work-list" id="applicationList" aria-live="polite" hidden></section>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=phase2"></script>
+    <script src="admin.js?v=phase2"></script>
+  </body>
+</html>

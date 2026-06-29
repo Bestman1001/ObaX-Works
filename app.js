@@ -106,6 +106,11 @@ const quoteForm = document.querySelector("#quoteForm");
 const quoteArtisanText = document.querySelector("#quoteArtisanText");
 const quoteNote = document.querySelector("#quoteNote");
 const quoteSubmitButton = quoteForm.querySelector("button[type='submit']");
+const joinForm = document.querySelector("#joinForm");
+const joinState = document.querySelector("#joinState");
+const joinArea = document.querySelector("#joinArea");
+const joinNote = document.querySelector("#joinNote");
+const joinSubmitButton = joinForm.querySelector("button[type='submit']");
 let selectedQuoteArtisan = null;
 
 const supabaseSettings = window.FIXAM_SUPABASE || {};
@@ -116,7 +121,7 @@ const supabaseClient =
 
 states.forEach((state) => {
   stateFilter.add(new Option(state.name, state.name));
-  document.querySelector("#joinState").add(new Option(state.name, state.name));
+  joinState.add(new Option(state.name, state.name));
 });
 
 document.querySelector("#stateGrid").innerHTML = states
@@ -166,6 +171,12 @@ function syncAreas() {
   areaFilter.add(new Option("All areas", "All"));
   selected.areas.forEach((area) => areaFilter.add(new Option(area, area)));
   activeOrigin = selected.center;
+}
+
+function syncJoinAreas() {
+  const selected = states.find((state) => state.name === joinState.value);
+  joinArea.innerHTML = "";
+  selected.areas.forEach((area) => joinArea.add(new Option(area, area)));
 }
 
 function filteredArtisans() {
@@ -267,6 +278,7 @@ stateFilter.addEventListener("change", () => {
   render();
 });
 
+joinState.addEventListener("change", syncJoinAreas);
 areaFilter.addEventListener("change", render);
 serviceSearch.addEventListener("input", render);
 sortFilter.addEventListener("change", render);
@@ -357,24 +369,10 @@ quoteForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
-  let error = null;
-
-  try {
-    ({ error } = await supabaseClient.from("quote_requests").insert(payload).abortSignal(controller.signal));
-  } catch (requestError) {
-    error = requestError;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
+  const { error } = await insertWithTimeout("quote_requests", payload);
 
   if (error) {
-    const message =
-      error.name === "AbortError"
-        ? "The request took too long. Please check your connection and try again."
-        : `We could not save this request yet: ${error.message}`;
-    setQuoteStatus(message, "error");
+    setQuoteStatus(formatSubmitError(error), "error");
     quoteSubmitButton.textContent = "Try again";
     quoteSubmitButton.disabled = false;
     return;
@@ -384,11 +382,83 @@ quoteForm.addEventListener("submit", async (event) => {
   quoteSubmitButton.textContent = "Request sent";
 });
 
+joinForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const applicationCode = `F9-A-${Date.now().toString().slice(-6)}`;
+  const payload = {
+    application_code: applicationCode,
+    full_name: document.querySelector("#joinName").value.trim(),
+    trade: document.querySelector("#joinTrade").value,
+    state: joinState.value,
+    area: joinArea.value,
+    phone: document.querySelector("#joinPhone").value.trim(),
+    preferred_plan: document.querySelector("#joinPlan").value,
+    years_experience: Number(document.querySelector("#joinExperience").value),
+    work_summary: document.querySelector("#joinDetails").value.trim(),
+    source: "website",
+  };
+
+  setJoinStatus("Sending application...", "");
+  joinSubmitButton.disabled = true;
+  joinSubmitButton.textContent = "Sending...";
+
+  if (!supabaseClient) {
+    setJoinStatus(
+      `Application ${applicationCode} prepared. Add your Supabase URL and anon key to save it online.`,
+      "success",
+    );
+    joinSubmitButton.textContent = "Application prepared";
+    joinSubmitButton.disabled = false;
+    return;
+  }
+
+  const { error } = await insertWithTimeout("artisan_applications", payload);
+
+  if (error) {
+    setJoinStatus(formatSubmitError(error), "error");
+    joinSubmitButton.textContent = "Try again";
+    joinSubmitButton.disabled = false;
+    return;
+  }
+
+  setJoinStatus(`Application ${applicationCode} received. FixAm 9ja will review it before listing.`, "success");
+  joinSubmitButton.textContent = "Application sent";
+  joinForm.reset();
+  syncJoinAreas();
+});
+
 function setQuoteStatus(message, type) {
   quoteNote.textContent = message;
   quoteNote.classList.remove("success-note", "error-note");
   if (type === "success") quoteNote.classList.add("success-note");
   if (type === "error") quoteNote.classList.add("error-note");
+}
+
+function setJoinStatus(message, type) {
+  joinNote.textContent = message;
+  joinNote.classList.remove("success-note", "error-note");
+  if (type === "success") joinNote.classList.add("success-note");
+  if (type === "error") joinNote.classList.add("error-note");
+}
+
+async function insertWithTimeout(table, payload) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+  try {
+    return await supabaseClient.from(table).insert(payload).abortSignal(controller.signal);
+  } catch (error) {
+    return { error };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function formatSubmitError(error) {
+  return error.name === "AbortError"
+    ? "The request took too long. Please check your connection and try again."
+    : `We could not save this yet: ${error.message}`;
 }
 
 function openProfile(artisan) {
@@ -465,4 +535,5 @@ function closeModals() {
 }
 
 syncAreas();
+syncJoinAreas();
 render();

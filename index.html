@@ -16,7 +16,7 @@
       integrity="sha256-p4NxAoJBhIINfQJQhv/0Xz4dU1Y3rI6QGzV3G4rjvXw="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=supabase1" />
+    <link rel="stylesheet" href="styles.css?v=phase2" />
   </head>
   <body>
     <header class="topbar">
@@ -184,14 +184,14 @@
           <p class="eyebrow">Artisan onboarding</p>
           <h2>Start with a profile. Grow into a trusted local business.</h2>
         </div>
-        <form class="join-form">
+        <form class="join-form" id="joinForm">
           <label>
             <span>Full name</span>
-            <input type="text" placeholder="e.g. Chinedu Okafor" />
+            <input id="joinName" type="text" placeholder="e.g. Chinedu Okafor" required />
           </label>
           <label>
             <span>Trade</span>
-            <select>
+            <select id="joinTrade">
               <option>Electrician</option>
               <option>Plumber</option>
               <option>Tailor/Fashion designer</option>
@@ -205,10 +205,32 @@
             <select id="joinState"></select>
           </label>
           <label>
-            <span>Phone number</span>
-            <input type="tel" placeholder="+234..." />
+            <span>Area</span>
+            <select id="joinArea"></select>
           </label>
-          <button class="primary-action large" type="button">Create artisan profile</button>
+          <label>
+            <span>Phone number</span>
+            <input id="joinPhone" type="tel" placeholder="+234..." required />
+          </label>
+          <label>
+            <span>Preferred plan</span>
+            <select id="joinPlan">
+              <option>Basic</option>
+              <option>Verified</option>
+              <option>Pro</option>
+              <option>Business</option>
+            </select>
+          </label>
+          <label>
+            <span>Years of experience</span>
+            <input id="joinExperience" type="number" min="0" max="60" placeholder="e.g. 5" required />
+          </label>
+          <label class="full-span">
+            <span>Work summary</span>
+            <textarea id="joinDetails" rows="4" placeholder="Tell us your service area, strongest skills, and what customers usually call you for." required></textarea>
+          </label>
+          <button class="primary-action large" type="submit">Create artisan profile</button>
+          <p class="form-note" id="joinNote">Applications are reviewed before artisans appear in the marketplace.</p>
         </form>
       </section>
     </main>
@@ -270,7 +292,7 @@
       crossorigin=""
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=supabase1"></script>
-    <script src="app.js?v=supabase1"></script>
+    <script src="supabase-config.js?v=phase2"></script>
+    <script src="app.js?v=phase2"></script>
   </body>
 </html>
