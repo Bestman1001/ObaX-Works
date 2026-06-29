@@ -186,7 +186,10 @@ function renderMap(matches) {
   );
 
   const selectedState = states.find((state) => state.name === stateFilter.value);
-  if (markers.length) {
+  map.invalidateSize();
+  if (markers.length === 1) {
+    map.setView([matches[0].lat, matches[0].lng], 12);
+  } else if (markers.length) {
     const group = L.featureGroup(markers);
     map.fitBounds(group.getBounds().pad(0.18));
   } else {
@@ -202,7 +205,12 @@ function render() {
   const matches = filteredArtisans();
   renderCards(matches);
   renderMap(matches);
+  requestAnimationFrame(() => map.invalidateSize());
 }
+
+window.addEventListener("resize", () => {
+  requestAnimationFrame(() => map.invalidateSize());
+});
 
 stateFilter.addEventListener("change", () => {
   syncAreas();
