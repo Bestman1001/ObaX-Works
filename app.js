@@ -357,10 +357,24 @@ quoteForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const { error } = await supabaseClient.from("quote_requests").insert(payload);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+  let error = null;
+
+  try {
+    ({ error } = await supabaseClient.from("quote_requests").insert(payload).abortSignal(controller.signal));
+  } catch (requestError) {
+    error = requestError;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   if (error) {
-    setQuoteStatus(`We could not save this request yet: ${error.message}`, "error");
+    const message =
+      error.name === "AbortError"
+        ? "The request took too long. Please check your connection and try again."
+        : `We could not save this request yet: ${error.message}`;
+    setQuoteStatus(message, "error");
     quoteSubmitButton.textContent = "Try again";
     quoteSubmitButton.disabled = false;
     return;
