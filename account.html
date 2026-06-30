@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FixAm 9ja Accounts</title>
     <meta name="robots" content="noindex" />
-    <link rel="stylesheet" href="account.css?v=phase5-profile-tools" />
+    <link rel="stylesheet" href="account.css?v=phase5-easy-login" />
   </head>
   <body>
     <header class="account-topbar">
@@ -39,13 +39,6 @@
         </div>
         <form class="account-form" id="authForm">
           <label>
-            <span>Password option</span>
-            <select id="authMode">
-              <option value="signin">Sign in with password</option>
-              <option value="signup">Create password account</option>
-            </select>
-          </label>
-          <label>
             <span>Account type</span>
             <select id="accountRole">
               <option value="customer">Customer</option>
@@ -64,14 +57,26 @@
             <span>Email</span>
             <input id="email" type="email" placeholder="you@example.com" required />
           </label>
-          <label class="full-span">
-            <span>Password</span>
-            <input id="password" type="password" placeholder="Only needed if you prefer password sign in" />
-          </label>
           <div class="form-actions">
             <button class="primary-action" type="button" id="magicLinkButton">Email me a sign-in link</button>
-            <button class="secondary-action" type="submit">Use password instead</button>
           </div>
+          <details class="password-panel">
+            <summary>Use password instead</summary>
+            <div class="password-grid">
+              <label>
+                <span>Password action</span>
+                <select id="authMode">
+                  <option value="signin">Sign in with password</option>
+                  <option value="signup">Create password account</option>
+                </select>
+              </label>
+              <label>
+                <span>Password</span>
+                <input id="password" type="password" placeholder="Minimum 6 characters" />
+              </label>
+              <button class="secondary-action" type="submit">Continue with password</button>
+            </div>
+          </details>
           <p class="form-note" id="authNote">Use one email for all your FixAm 9ja jobs, reviews, and uploads.</p>
         </form>
       </section>
@@ -167,6 +172,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=phase5"></script>
-    <script src="account.js?v=phase5-profile-tools"></script>
+    <script src="account.js?v=phase5-easy-login"></script>
   </body>
 </html>

@@ -42,7 +42,7 @@ authForm.addEventListener("submit", async (event) => {
   const role = document.querySelector("#accountRole").value;
 
   if (!password) {
-    setNote(authNote, "Enter a password for password sign in, or choose the email sign-in link button.", "error");
+    await sendEmailSignInLink();
     return;
   }
 
@@ -74,6 +74,10 @@ authForm.addEventListener("submit", async (event) => {
 });
 
 magicLinkButton.addEventListener("click", async () => {
+  await sendEmailSignInLink();
+});
+
+async function sendEmailSignInLink() {
   if (!supabaseClient) return;
 
   const email = document.querySelector("#email").value.trim();
@@ -100,7 +104,7 @@ magicLinkButton.addEventListener("click", async () => {
     error ? error.message : "Sign-in link sent. Open your email on this device and tap the link.",
     error ? "error" : "success",
   );
-});
+}
 
 signOutButton.addEventListener("click", async () => {
   if (!supabaseClient) return;
