@@ -1,4 +1,5 @@
 const settings = window.FIXAM_SUPABASE || {};
+const productionAccountUrl = "https://bestman1001.github.io/FixAm-9ja/account.html";
 const supabaseClient =
   window.supabase && settings.url && settings.anonKey
     ? window.supabase.createClient(settings.url, settings.anonKey)
@@ -53,7 +54,10 @@ authForm.addEventListener("submit", async (event) => {
       ? await supabaseClient.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName, phone, role } },
+          options: {
+            emailRedirectTo: accountRedirectUrl(),
+            data: { full_name: fullName, phone, role },
+          },
         })
       : await supabaseClient.auth.signInWithPassword({ email, password });
 
@@ -94,7 +98,7 @@ async function sendEmailSignInLink() {
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: window.location.href,
+      emailRedirectTo: accountRedirectUrl(),
       data: { full_name: fullName, phone, role },
     },
   });
@@ -505,6 +509,17 @@ function phoneKey(value) {
   if (digits.startsWith("234") && digits.length >= 13) return digits.slice(-10);
   if (digits.startsWith("0") && digits.length >= 11) return digits.slice(-10);
   return digits.slice(-10);
+}
+
+function accountRedirectUrl() {
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    return productionAccountUrl;
+  }
+
+  const redirectUrl = new URL("account.html", window.location.href);
+  redirectUrl.hash = "";
+  redirectUrl.search = "";
+  return redirectUrl.href;
 }
 
 function escapeHtml(value) {

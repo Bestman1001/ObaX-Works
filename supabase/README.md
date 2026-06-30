@@ -5,8 +5,11 @@
 3. Paste and run `supabase/schema.sql`.
 4. Go to Project Settings > API.
 5. Copy the Project URL and anon public key into `supabase-config.js`.
-6. Create an admin user in Authentication > Users.
-7. Add the admin user to `public.admin_profiles`.
+6. Go to Authentication > URL Configuration.
+7. Set Site URL to `https://bestman1001.github.io/FixAm-9ja/`.
+8. Add `https://bestman1001.github.io/FixAm-9ja/account.html` to Redirect URLs.
+9. Create an admin user in Authentication > Users.
+10. Add the admin user to `public.admin_profiles`.
 
 Use this after creating the Supabase Auth user, replacing the email:
 
