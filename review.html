@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Review Artisan | FixAm 9ja</title>
     <meta name="robots" content="noindex" />
-    <link rel="stylesheet" href="review.css?v=phase3" />
+    <link rel="stylesheet" href="review.css?v=phase5" />
   </head>
   <body>
     <header class="review-topbar">
@@ -93,6 +93,10 @@
           <span>Your comment</span>
           <textarea id="comment" rows="5" placeholder="Share what happened, what went well, or what should improve." required></textarea>
         </label>
+        <label class="full-span">
+          <span>Completion photos/videos</span>
+          <input id="reviewMedia" type="file" accept="image/*,video/*" multiple />
+        </label>
         <button class="primary-action large" type="submit">Publish review</button>
         <p class="form-note" id="reviewNote">
           Reviews publish automatically. FixAm 9ja may hide only abusive, fake, threatening, or private-information content.
@@ -101,7 +105,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=phase3"></script>
-    <script src="review.js?v=phase3"></script>
+    <script src="supabase-config.js?v=phase5"></script>
+    <script src="review.js?v=phase5"></script>
   </body>
 </html>

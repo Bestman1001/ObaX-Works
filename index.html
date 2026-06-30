@@ -16,7 +16,7 @@
       integrity="sha256-p4NxAoJBhIINfQJQhv/0Xz4dU1Y3rI6QGzV3G4rjvXw="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=phase4" />
+    <link rel="stylesheet" href="styles.css?v=phase5" />
   </head>
   <body>
     <header class="topbar">
@@ -32,6 +32,7 @@
         <a href="#states">States</a>
         <a href="#plans">Plans</a>
         <a href="#trust">Trust</a>
+        <a href="account.html">Accounts</a>
       </nav>
       <button class="primary-action" type="button" data-scroll-to="join">Join as Artisan</button>
     </header>
@@ -229,6 +230,10 @@
             <span>Work summary</span>
             <textarea id="joinDetails" rows="4" placeholder="Tell us your service area, strongest skills, and what customers usually call you for." required></textarea>
           </label>
+          <label class="full-span">
+            <span>Portfolio images/videos</span>
+            <input id="joinMedia" type="file" accept="image/*,video/*" multiple />
+          </label>
           <button class="primary-action large" type="submit">Create artisan profile</button>
           <p class="form-note" id="joinNote">Applications are reviewed before artisans appear in the marketplace.</p>
         </form>
@@ -275,6 +280,10 @@
             <span>Job details</span>
             <textarea id="quoteDetails" rows="5" placeholder="Describe the issue, size of job, budget, or photos you will share later." required></textarea>
           </label>
+          <label class="full-span">
+            <span>Job photos/videos</span>
+            <input id="quoteMedia" type="file" accept="image/*,video/*" multiple />
+          </label>
           <button class="primary-action large" type="submit">Send quote request</button>
           <p class="form-note" id="quoteNote">Your request will be saved once the FixAm 9ja database is connected.</p>
         </form>
@@ -292,7 +301,7 @@
       crossorigin=""
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=phase4"></script>
-    <script src="app.js?v=phase4"></script>
+    <script src="supabase-config.js?v=phase5"></script>
+    <script src="app.js?v=phase5"></script>
   </body>
 </html>

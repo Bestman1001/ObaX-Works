@@ -1,5 +1,46 @@
 create extension if not exists pgcrypto;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'fixam-media',
+  'fixam-media',
+  true,
+  52428800,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+create table if not exists public.user_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  full_name text not null,
+  phone text,
+  role text not null default 'customer' check (role in ('customer', 'artisan')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_profiles enable row level security;
+
+drop policy if exists "Users can read own profile" on public.user_profiles;
+drop policy if exists "Users can upsert own profile" on public.user_profiles;
+
+create policy "Users can read own profile"
+  on public.user_profiles
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+create policy "Users can upsert own profile"
+  on public.user_profiles
+  for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
 create table if not exists public.quote_requests (
   id uuid primary key default gen_random_uuid(),
   request_code text unique not null,
@@ -23,6 +64,12 @@ create table if not exists public.quote_requests (
 
 alter table public.quote_requests
   add column if not exists review_token text;
+
+alter table public.quote_requests
+  add column if not exists customer_user_id uuid references auth.users(id) on delete set null;
+
+alter table public.quote_requests
+  add column if not exists media_count integer not null default 0;
 
 create index if not exists quote_requests_created_at_idx
   on public.quote_requests (created_at desc);
@@ -67,6 +114,12 @@ create table if not exists public.artisan_applications (
   source text not null default 'website',
   created_at timestamptz not null default now()
 );
+
+alter table public.artisan_applications
+  add column if not exists applicant_user_id uuid references auth.users(id) on delete set null;
+
+alter table public.artisan_applications
+  add column if not exists media_count integer not null default 0;
 
 create index if not exists artisan_applications_created_at_idx
   on public.artisan_applications (created_at desc);
@@ -135,6 +188,12 @@ create table if not exists public.artisans (
   updated_at timestamptz not null default now()
 );
 
+alter table public.artisans
+  add column if not exists owner_user_id uuid references auth.users(id) on delete set null;
+
+alter table public.artisans
+  add column if not exists profile_image_url text;
+
 create index if not exists artisans_state_area_idx
   on public.artisans (state, area);
 
@@ -152,6 +211,9 @@ alter table public.artisans enable row level security;
 
 drop policy if exists "Anyone can read active artisans" on public.artisans;
 drop policy if exists "Admins can manage artisans" on public.artisans;
+drop policy if exists "Artisans can read own profile" on public.artisans;
+drop policy if exists "Artisans can update own profile" on public.artisans;
+drop policy if exists "Artisans can claim unowned matching phone profile" on public.artisans;
 
 create policy "Anyone can read active artisans"
   on public.artisans
@@ -171,6 +233,34 @@ create policy "Admins can manage artisans"
     select 1 from public.admin_profiles
     where admin_profiles.user_id = auth.uid()
   ));
+
+create policy "Artisans can read own profile"
+  on public.artisans
+  for select
+  to authenticated
+  using (owner_user_id = auth.uid());
+
+create policy "Artisans can update own profile"
+  on public.artisans
+  for update
+  to authenticated
+  using (owner_user_id = auth.uid())
+  with check (owner_user_id = auth.uid());
+
+create policy "Artisans can claim unowned matching phone profile"
+  on public.artisans
+  for update
+  to authenticated
+  using (
+    owner_user_id is null
+    and exists (
+      select 1 from public.user_profiles
+      where user_profiles.user_id = auth.uid()
+        and user_profiles.phone = artisans.phone
+        and user_profiles.role = 'artisan'
+    )
+  )
+  with check (owner_user_id = auth.uid());
 
 drop policy if exists "Admins can read quote requests" on public.quote_requests;
 drop policy if exists "Admins can update quote requests" on public.quote_requests;
@@ -197,6 +287,14 @@ create policy "Admins can update quote requests"
     where admin_profiles.user_id = auth.uid()
   ));
 
+drop policy if exists "Customers can read own quote requests" on public.quote_requests;
+
+create policy "Customers can read own quote requests"
+  on public.quote_requests
+  for select
+  to authenticated
+  using (customer_user_id = auth.uid());
+
 create table if not exists public.artisan_reviews (
   id uuid primary key default gen_random_uuid(),
   review_token text unique not null,
@@ -220,6 +318,12 @@ create table if not exists public.artisan_reviews (
   admin_note text,
   created_at timestamptz not null default now()
 );
+
+alter table public.artisan_reviews
+  add column if not exists customer_user_id uuid references auth.users(id) on delete set null;
+
+alter table public.artisan_reviews
+  add column if not exists media_count integer not null default 0;
 
 create index if not exists artisan_reviews_artisan_id_idx
   on public.artisan_reviews (artisan_id);
@@ -310,6 +414,7 @@ create policy "Admins can upsert artisan standing"
 
 drop policy if exists "Admins can read artisan applications" on public.artisan_applications;
 drop policy if exists "Admins can update artisan applications" on public.artisan_applications;
+drop policy if exists "Applicants can read own artisan applications" on public.artisan_applications;
 
 create policy "Admins can read artisan applications"
   on public.artisan_applications
@@ -332,3 +437,90 @@ create policy "Admins can update artisan applications"
     select 1 from public.admin_profiles
     where admin_profiles.user_id = auth.uid()
   ));
+
+create policy "Applicants can read own artisan applications"
+  on public.artisan_applications
+  for select
+  to authenticated
+  using (applicant_user_id = auth.uid());
+
+create table if not exists public.media_uploads (
+  id uuid primary key default gen_random_uuid(),
+  bucket text not null default 'fixam-media',
+  storage_path text unique not null,
+  public_url text,
+  entity_type text not null check (
+    entity_type in ('quote_request', 'artisan_application', 'artisan_profile', 'customer_review')
+  ),
+  entity_id text not null,
+  uploaded_by_role text not null check (uploaded_by_role in ('customer', 'artisan', 'admin')),
+  uploaded_by_user_id uuid references auth.users(id) on delete set null,
+  file_name text not null,
+  mime_type text not null,
+  file_size integer not null default 0,
+  visibility text not null default 'public' check (visibility in ('public', 'private')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists media_uploads_entity_idx
+  on public.media_uploads (entity_type, entity_id);
+
+create index if not exists media_uploads_user_idx
+  on public.media_uploads (uploaded_by_user_id);
+
+alter table public.media_uploads enable row level security;
+
+drop policy if exists "Anyone can create media metadata" on public.media_uploads;
+drop policy if exists "Anyone can read public media metadata" on public.media_uploads;
+drop policy if exists "Users can read own media metadata" on public.media_uploads;
+drop policy if exists "Admins can read all media metadata" on public.media_uploads;
+
+create policy "Anyone can create media metadata"
+  on public.media_uploads
+  for insert
+  to anon, authenticated
+  with check (true);
+
+create policy "Anyone can read public media metadata"
+  on public.media_uploads
+  for select
+  to anon, authenticated
+  using (visibility = 'public');
+
+create policy "Users can read own media metadata"
+  on public.media_uploads
+  for select
+  to authenticated
+  using (uploaded_by_user_id = auth.uid());
+
+create policy "Admins can read all media metadata"
+  on public.media_uploads
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.admin_profiles
+    where admin_profiles.user_id = auth.uid()
+  ));
+
+drop policy if exists "Anyone can read FixAm media files" on storage.objects;
+drop policy if exists "Anyone can upload FixAm media files" on storage.objects;
+drop policy if exists "Users can update own FixAm media files" on storage.objects;
+
+create policy "Anyone can read FixAm media files"
+  on storage.objects
+  for select
+  to anon, authenticated
+  using (bucket_id = 'fixam-media');
+
+create policy "Anyone can upload FixAm media files"
+  on storage.objects
+  for insert
+  to anon, authenticated
+  with check (bucket_id = 'fixam-media');
+
+create policy "Users can update own FixAm media files"
+  on storage.objects
+  for update
+  to authenticated
+  using (bucket_id = 'fixam-media' and owner = auth.uid())
+  with check (bucket_id = 'fixam-media' and owner = auth.uid());

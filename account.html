@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FixAm 9ja Accounts</title>
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="account.css?v=phase5" />
+  </head>
+  <body>
+    <header class="account-topbar">
+      <a class="brand" href="index.html" aria-label="FixAm 9ja home">
+        <span class="brand-mark">F9</span>
+        <span>
+          <strong>FixAm 9ja</strong>
+          <small>Customer and Artisan Accounts</small>
+        </span>
+      </a>
+      <div class="session-actions">
+        <span id="sessionEmail">Signed out</span>
+        <button class="secondary-action" type="button" id="signOutButton" hidden>Sign out</button>
+      </div>
+    </header>
+
+    <main class="account-shell">
+      <section class="intro-panel">
+        <p class="eyebrow">Phase 5</p>
+        <h1>Manage jobs, profiles, and proof of work.</h1>
+        <p>
+          Customers can track quote requests. Artisans can claim their profile and upload portfolio media.
+        </p>
+      </section>
+
+      <section class="auth-panel" id="authPanel">
+        <form class="account-form" id="authForm">
+          <label>
+            <span>Mode</span>
+            <select id="authMode">
+              <option value="signin">Sign in</option>
+              <option value="signup">Create account</option>
+            </select>
+          </label>
+          <label>
+            <span>Account type</span>
+            <select id="accountRole">
+              <option value="customer">Customer</option>
+              <option value="artisan">Artisan</option>
+            </select>
+          </label>
+          <label>
+            <span>Full name</span>
+            <input id="fullName" type="text" placeholder="e.g. Ada Okafor" />
+          </label>
+          <label>
+            <span>Phone</span>
+            <input id="phone" type="tel" placeholder="+234..." />
+          </label>
+          <label class="full-span">
+            <span>Email</span>
+            <input id="email" type="email" placeholder="you@example.com" required />
+          </label>
+          <label class="full-span">
+            <span>Password</span>
+            <input id="password" type="password" placeholder="Minimum 6 characters" />
+          </label>
+          <div class="form-actions">
+            <button class="primary-action" type="submit">Continue</button>
+            <button class="secondary-action" type="button" id="magicLinkButton">Send magic link</button>
+          </div>
+          <p class="form-note" id="authNote">Use one email for your FixAm 9ja activity.</p>
+        </form>
+      </section>
+
+      <section class="dashboard-panel" id="dashboardPanel" hidden>
+        <div class="dashboard-heading">
+          <div>
+            <p class="eyebrow">Account dashboard</p>
+            <h2 id="dashboardTitle">Your FixAm account</h2>
+          </div>
+          <button class="secondary-action" type="button" id="refreshButton">Refresh</button>
+        </div>
+
+        <form class="account-form compact" id="profileForm">
+          <label>
+            <span>Full name</span>
+            <input id="profileName" type="text" required />
+          </label>
+          <label>
+            <span>Phone</span>
+            <input id="profilePhone" type="tel" />
+          </label>
+          <label>
+            <span>Role</span>
+            <select id="profileRole">
+              <option value="customer">Customer</option>
+              <option value="artisan">Artisan</option>
+            </select>
+          </label>
+          <button class="primary-action" type="submit">Save profile</button>
+        </form>
+
+        <p class="form-note" id="dashboardNote">Loading account...</p>
+
+        <div class="account-grid">
+          <section class="account-card">
+            <h3>Quote requests</h3>
+            <div class="record-list" id="quoteList"></div>
+          </section>
+          <section class="account-card">
+            <h3>Artisan applications</h3>
+            <div class="record-list" id="applicationList"></div>
+          </section>
+          <section class="account-card">
+            <h3>Artisan profile</h3>
+            <div class="record-list" id="artisanProfile"></div>
+            <button class="secondary-action" type="button" id="claimProfileButton">Claim matching phone profile</button>
+          </section>
+          <section class="account-card">
+            <h3>Portfolio uploads</h3>
+            <label>
+              <span>Images/videos</span>
+              <input id="portfolioMedia" type="file" accept="image/*,video/*" multiple />
+            </label>
+            <button class="primary-action" type="button" id="portfolioUploadButton">Upload to profile</button>
+            <div class="record-list media-list" id="mediaList"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=phase5"></script>
+    <script src="account.js?v=phase5"></script>
+  </body>
+</html>

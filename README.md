@@ -34,6 +34,8 @@ FixAm 9ja is a map-first Nigerian artisan marketplace by ObaX for finding truste
 - Admin can manage artisan profile status, plan level, verification state, and quality standing
 - `review.html` lets customers publish transparent artisan reviews from one-time review links
 - Admin can hide/flag abusive reviews and mark artisans as active, warning, suspended, or removed
+- `account.html` lets customers and artisans sign in, manage profile details, view linked activity, claim matching artisan profiles, and upload portfolio media
+- Quote requests, artisan applications, and customer reviews can include image/video uploads through Supabase Storage
 
 ## Supabase
 
@@ -54,6 +56,10 @@ Reviews are customer-to-artisan by default. Admin does not approve or edit ratin
 ## Phase 4 Directory
 
 The `artisans` table is the real public directory. Admin can turn an application into a live profile from `admin.html`, then pause, suspend, remove, verify, or upgrade the profile plan without editing database rows manually.
+
+## Phase 5 Accounts + Media
+
+Phase 5 adds Supabase Auth account profiles and a public `fixam-media` Storage bucket. Customers can attach job photos/videos to quote requests and reviews. Artisans can attach portfolio media during onboarding, claim a matching phone-number profile, and upload more portfolio media from `account.html`.
 
 ## Run Locally
 

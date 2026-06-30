@@ -18,7 +18,7 @@ where email = 'you@example.com'
 on conflict (user_id) do update set email = excluded.email;
 ```
 
-The public website only gets insert access to `quote_requests`, `artisan_applications`, and customer reviews. Anonymous visitors can read active artisan profiles, public review summaries, and artisan standing so marketplace listings and ratings can update. Anonymous visitors cannot read private quote/customer details.
+The public website gets insert access to `quote_requests`, `artisan_applications`, customer reviews, media metadata, and the public `fixam-media` Storage bucket. Anonymous visitors can read active artisan profiles, public review summaries, public media metadata, and artisan standing so marketplace listings and ratings can update. Anonymous visitors cannot read private quote/customer details.
 
 ## Artisan Directory Flow
 
@@ -35,3 +35,11 @@ The public website only gets insert access to `quote_requests`, `artisan_applica
 3. Customer opens the link and submits `review.html`.
 4. Review publishes automatically.
 5. Admin can hide/flag unsafe reviews, or mark an artisan as warning, suspended, or removed.
+
+## Accounts + Media Flow
+
+1. Run the latest `schema.sql` to create `user_profiles`, `media_uploads`, and the `fixam-media` Storage bucket.
+2. Customers or artisans open `account.html` and create/sign into an account.
+3. Public quote requests, artisan applications, and reviews can attach up to four image/video files per submission.
+4. Artisans can claim a listed profile when their account phone number matches an unowned artisan profile.
+5. Claimed artisans can upload portfolio media from the account dashboard.

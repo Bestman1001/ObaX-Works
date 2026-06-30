@@ -198,14 +198,14 @@ async function loadDashboard() {
     supabaseClient
       .from("quote_requests")
       .select(
-        "id, request_code, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, customer_name, customer_phone, job_location, urgency, job_details, status, created_at",
+        "id, request_code, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, customer_name, customer_phone, job_location, urgency, job_details, status, media_count, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(100),
     supabaseClient
       .from("artisan_applications")
       .select(
-        "id, application_code, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, created_at",
+        "id, application_code, applicant_user_id, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(100),
@@ -219,7 +219,7 @@ async function loadDashboard() {
     supabaseClient
       .from("artisan_reviews")
       .select(
-        "id, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, customer_name, rating, quality_rating, timeliness_rating, professionalism_rating, price_fairness_rating, would_recommend, comment, visibility, created_at",
+        "id, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, customer_name, rating, quality_rating, timeliness_rating, professionalism_rating, price_fairness_rating, would_recommend, comment, visibility, media_count, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(100),
@@ -348,6 +348,7 @@ function renderQuoteCard(quote) {
           <span class="badge">${escapeHtml(quote.job_location)}</span>
           <span class="badge">${escapeHtml(quote.urgency)}</span>
           <span class="badge">${escapeHtml(quote.artisan_area)}, ${escapeHtml(quote.artisan_state)}</span>
+          <span class="badge">${quote.media_count || 0} media</span>
         </div>
         <p><strong>Requested artisan:</strong> ${escapeHtml(quote.artisan_name)}</p>
       </div>
@@ -382,6 +383,7 @@ function renderApplicationCard(application) {
           <span class="badge">${escapeHtml(application.area)}, ${escapeHtml(application.state)}</span>
           <span class="badge">${escapeHtml(application.preferred_plan)}</span>
           <span class="badge">${application.years_experience} yrs</span>
+          <span class="badge">${application.media_count || 0} media</span>
         </div>
       </div>
       <div class="work-actions">
@@ -472,6 +474,7 @@ function renderReviewCard(review) {
           <span class="badge">Professional ${review.professionalism_rating}</span>
           <span class="badge">Price ${review.price_fairness_rating}</span>
           <span class="badge">${review.would_recommend ? "Recommends" : "Would not recommend"}</span>
+          <span class="badge">${review.media_count || 0} media</span>
         </div>
       </div>
       <div class="work-actions">
@@ -595,6 +598,7 @@ async function createArtisanFromApplication(applicationId) {
     application_id: application.id,
     business_name: application.full_name,
     owner_name: application.full_name,
+    owner_user_id: application.applicant_user_id || null,
     phone: application.phone,
     category: application.trade,
     state: application.state,
