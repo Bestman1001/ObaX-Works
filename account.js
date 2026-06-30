@@ -119,11 +119,41 @@ claimProfileButton.addEventListener("click", async () => {
   if (!currentUser || !currentProfile?.phone) return;
 
   setNote(dashboardNote, "Claiming matching artisan profile...", "");
+  if (currentProfile.role !== "artisan") {
+    setNote(dashboardNote, "Change your account role to Artisan and save your profile before claiming.", "error");
+    return;
+  }
+
+  const profilePhoneKey = phoneKey(currentProfile.phone);
+  if (!profilePhoneKey) {
+    setNote(dashboardNote, "Add your artisan phone number, save your profile, then claim again.", "error");
+    return;
+  }
+
+  const { data: possibleMatches, error: matchError } = await supabaseClient
+    .from("artisans")
+    .select("id, business_name, phone, owner_user_id, profile_status")
+    .eq("profile_status", "active");
+
+  if (matchError) {
+    setNote(dashboardNote, matchError.message, "error");
+    return;
+  }
+
+  const matchedArtisan = (possibleMatches || []).find((artisan) => phoneKey(artisan.phone) === profilePhoneKey);
+  if (!matchedArtisan) {
+    setNote(
+      dashboardNote,
+      "No live artisan profile matches this phone number yet. Check the number in Admin > Artisan profiles.",
+      "error",
+    );
+    return;
+  }
+
   const { data, error } = await supabaseClient
     .from("artisans")
     .update({ owner_user_id: currentUser.id, updated_at: new Date().toISOString() })
-    .eq("phone", currentProfile.phone)
-    .is("owner_user_id", null)
+    .eq("id", matchedArtisan.id)
     .select();
 
   if (error) {
@@ -131,7 +161,13 @@ claimProfileButton.addEventListener("click", async () => {
     return;
   }
 
-  setNote(dashboardNote, `${data?.length || 0} matching profile claimed.`, "success");
+  setNote(
+    dashboardNote,
+    data?.length
+      ? `${data[0].business_name} is now connected to your account.`
+      : "The profile matched, but Supabase blocked the claim. Run the updated Phase 5 claim policy SQL.",
+    data?.length ? "success" : "error",
+  );
   await loadDashboard();
 });
 
@@ -409,6 +445,14 @@ function isAllowedMedia(file) {
 
 function safeFileName(name) {
   return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function phoneKey(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("234") && digits.length >= 13) return digits.slice(-10);
+  if (digits.startsWith("0") && digits.length >= 11) return digits.slice(-10);
+  return digits.slice(-10);
 }
 
 function escapeHtml(value) {

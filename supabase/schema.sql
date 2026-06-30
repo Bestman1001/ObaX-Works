@@ -1,5 +1,13 @@
 create extension if not exists pgcrypto;
 
+create or replace function public.fixam_phone_key(phone_input text)
+returns text
+language sql
+immutable
+as $$
+  select right(regexp_replace(coalesce(phone_input, ''), '\D', '', 'g'), 10);
+$$;
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'fixam-media',
@@ -252,11 +260,11 @@ create policy "Artisans can claim unowned matching phone profile"
   for update
   to authenticated
   using (
-    owner_user_id is null
+    profile_status = 'active'
     and exists (
       select 1 from public.user_profiles
       where user_profiles.user_id = auth.uid()
-        and user_profiles.phone = artisans.phone
+        and public.fixam_phone_key(user_profiles.phone) = public.fixam_phone_key(artisans.phone)
         and user_profiles.role = 'artisan'
     )
   )
