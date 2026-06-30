@@ -8,6 +8,7 @@ const authPanel = document.querySelector("#authPanel");
 const dashboardPanel = document.querySelector("#dashboardPanel");
 const authForm = document.querySelector("#authForm");
 const profileForm = document.querySelector("#profileForm");
+const artisanProfileForm = document.querySelector("#artisanProfileForm");
 const authNote = document.querySelector("#authNote");
 const dashboardNote = document.querySelector("#dashboardNote");
 const sessionEmail = document.querySelector("#sessionEmail");
@@ -41,7 +42,7 @@ authForm.addEventListener("submit", async (event) => {
   const role = document.querySelector("#accountRole").value;
 
   if (!password) {
-    setNote(authNote, "Enter a password or use magic link.", "error");
+    setNote(authNote, "Enter a password for password sign in, or choose the email sign-in link button.", "error");
     return;
   }
 
@@ -81,15 +82,22 @@ magicLinkButton.addEventListener("click", async () => {
     return;
   }
 
-  setNote(authNote, "Sending magic link...", "");
+  const fullName = document.querySelector("#fullName").value.trim() || email.split("@")[0];
+  const phone = document.querySelector("#phone").value.trim();
+  const role = document.querySelector("#accountRole").value;
+
+  setNote(authNote, "Sending your secure sign-in link...", "");
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.href },
+    options: {
+      emailRedirectTo: window.location.href,
+      data: { full_name: fullName, phone, role },
+    },
   });
 
   setNote(
     authNote,
-    error ? error.message : "Magic link sent. Open it on this device to continue.",
+    error ? error.message : "Sign-in link sent. Open your email on this device and tap the link.",
     error ? "error" : "success",
   );
 });
@@ -113,6 +121,28 @@ profileForm.addEventListener("submit", async (event) => {
     role: document.querySelector("#profileRole").value,
   });
   await loadDashboard();
+});
+
+artisanProfileForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!ownedArtisan) return;
+
+  const payload = {
+    business_name: document.querySelector("#artisanBusinessName").value.trim(),
+    category: document.querySelector("#artisanCategory").value.trim(),
+    area: document.querySelector("#artisanArea").value.trim(),
+    availability: document.querySelector("#artisanAvailability").value,
+    service_radius: Number(document.querySelector("#artisanServiceRadius").value) || ownedArtisan.service_radius || 10,
+    bio: document.querySelector("#artisanBio").value.trim(),
+    updated_at: new Date().toISOString(),
+  };
+
+  setNote(dashboardNote, "Saving artisan profile...", "");
+  const { error } = await supabaseClient.from("artisans").update(payload).eq("id", ownedArtisan.id);
+  await loadDashboard({
+    message: error ? error.message : "Artisan profile saved.",
+    type: error ? "error" : "success",
+  });
 });
 
 claimProfileButton.addEventListener("click", async () => {
@@ -245,7 +275,7 @@ async function loadDashboard(note = null) {
       .limit(20),
     supabaseClient
       .from("artisans")
-      .select("id, business_name, category, state, area, phone, plan, profile_status, verification_status, updated_at")
+      .select("id, business_name, category, state, area, phone, plan, profile_status, verification_status, bio, availability, service_radius, updated_at")
       .eq("owner_user_id", currentUser.id)
       .limit(5),
     supabaseClient
@@ -260,6 +290,7 @@ async function loadDashboard(note = null) {
   renderQuotes(quotesResult.data || []);
   renderApplications(applicationsResult.data || []);
   renderArtisanProfile(artisansResult.data || []);
+  fillArtisanProfileForm();
   renderMedia(mediaResult.data || []);
 
   const firstError = quotesResult.error || applicationsResult.error || artisansResult.error || mediaResult.error;
@@ -347,15 +378,33 @@ function renderArtisanProfile(items) {
     ? items
         .map(
           (item) => `
-            <article>
+            <article class="connected-profile">
               <strong>${escapeHtml(item.business_name)}</strong>
               <small>${escapeHtml(item.category)} in ${escapeHtml(item.area)}, ${escapeHtml(item.state)}</small>
               <small>${escapeHtml(item.profile_status)} - ${escapeHtml(item.plan)} - ${escapeHtml(item.verification_status)}</small>
+              <small>${escapeHtml(item.availability || "Taking scheduled jobs")} - ${item.service_radius || 10} mile radius</small>
             </article>
           `,
         )
         .join("")
     : `<article><span>No claimed artisan profile yet. Use the claim button if your phone number matches a listed profile.</span></article>`;
+
+  claimProfileButton.hidden = items.length > 0;
+  artisanProfileForm.hidden = !items.length;
+}
+
+function fillArtisanProfileForm() {
+  if (!ownedArtisan) {
+    artisanProfileForm.reset();
+    return;
+  }
+
+  document.querySelector("#artisanBusinessName").value = ownedArtisan.business_name || "";
+  document.querySelector("#artisanCategory").value = ownedArtisan.category || "";
+  document.querySelector("#artisanArea").value = ownedArtisan.area || "";
+  document.querySelector("#artisanAvailability").value = ownedArtisan.availability || "Taking scheduled jobs";
+  document.querySelector("#artisanServiceRadius").value = ownedArtisan.service_radius || 10;
+  document.querySelector("#artisanBio").value = ownedArtisan.bio || "";
 }
 
 function renderMedia(items) {

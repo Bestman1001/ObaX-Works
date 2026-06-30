@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FixAm 9ja Accounts</title>
     <meta name="robots" content="noindex" />
-    <link rel="stylesheet" href="account.css?v=phase5" />
+    <link rel="stylesheet" href="account.css?v=phase5-profile-tools" />
   </head>
   <body>
     <header class="account-topbar">
@@ -32,12 +32,17 @@
       </section>
 
       <section class="auth-panel" id="authPanel">
+        <div class="auth-intro">
+          <p class="eyebrow">Easy sign in</p>
+          <h2>Enter your email and continue.</h2>
+          <p>No password is needed when you use the email sign-in link.</p>
+        </div>
         <form class="account-form" id="authForm">
           <label>
-            <span>Mode</span>
+            <span>Password option</span>
             <select id="authMode">
-              <option value="signin">Sign in</option>
-              <option value="signup">Create account</option>
+              <option value="signin">Sign in with password</option>
+              <option value="signup">Create password account</option>
             </select>
           </label>
           <label>
@@ -61,13 +66,13 @@
           </label>
           <label class="full-span">
             <span>Password</span>
-            <input id="password" type="password" placeholder="Minimum 6 characters" />
+            <input id="password" type="password" placeholder="Only needed if you prefer password sign in" />
           </label>
           <div class="form-actions">
-            <button class="primary-action" type="submit">Continue</button>
-            <button class="secondary-action" type="button" id="magicLinkButton">Send magic link</button>
+            <button class="primary-action" type="button" id="magicLinkButton">Email me a sign-in link</button>
+            <button class="secondary-action" type="submit">Use password instead</button>
           </div>
-          <p class="form-note" id="authNote">Use one email for your FixAm 9ja activity.</p>
+          <p class="form-note" id="authNote">Use one email for all your FixAm 9ja jobs, reviews, and uploads.</p>
         </form>
       </section>
 
@@ -114,6 +119,38 @@
             <h3>Artisan profile</h3>
             <div class="record-list" id="artisanProfile"></div>
             <button class="secondary-action" type="button" id="claimProfileButton">Claim matching phone profile</button>
+            <form class="profile-tools" id="artisanProfileForm" hidden>
+              <label>
+                <span>Business name</span>
+                <input id="artisanBusinessName" type="text" />
+              </label>
+              <label>
+                <span>Trade</span>
+                <input id="artisanCategory" type="text" />
+              </label>
+              <label>
+                <span>Area</span>
+                <input id="artisanArea" type="text" />
+              </label>
+              <label>
+                <span>Availability</span>
+                <select id="artisanAvailability">
+                  <option value="Taking jobs today">Taking jobs today</option>
+                  <option value="Taking scheduled jobs">Taking scheduled jobs</option>
+                  <option value="Busy this week">Busy this week</option>
+                  <option value="Emergency jobs only">Emergency jobs only</option>
+                </select>
+              </label>
+              <label>
+                <span>Service radius</span>
+                <input id="artisanServiceRadius" type="number" min="1" max="100" step="1" />
+              </label>
+              <label>
+                <span>About your work</span>
+                <textarea id="artisanBio" rows="4"></textarea>
+              </label>
+              <button class="primary-action" type="submit">Save artisan profile</button>
+            </form>
           </section>
           <section class="account-card">
             <h3>Portfolio uploads</h3>
@@ -130,6 +167,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=phase5"></script>
-    <script src="account.js?v=phase5-claim-message"></script>
+    <script src="account.js?v=phase5-profile-tools"></script>
   </body>
 </html>
