@@ -18,7 +18,15 @@ where email = 'you@example.com'
 on conflict (user_id) do update set email = excluded.email;
 ```
 
-The public website only gets insert access to `quote_requests`, `artisan_applications`, and customer reviews. Anonymous visitors can read public review summaries and artisan standing so marketplace ratings can update. Anonymous visitors cannot read private quote/customer details.
+The public website only gets insert access to `quote_requests`, `artisan_applications`, and customer reviews. Anonymous visitors can read active artisan profiles, public review summaries, and artisan standing so marketplace listings and ratings can update. Anonymous visitors cannot read private quote/customer details.
+
+## Artisan Directory Flow
+
+1. Artisan submits the public onboarding form.
+2. Admin opens `admin.html` and reviews the application.
+3. Admin clicks `Create artisan profile`.
+4. The profile is inserted into `public.artisans` and appears in the public directory when its profile status is `active`.
+5. Admin can manage profile status, plan, verification, and quality standing from the dashboard.
 
 ## Review Flow
 

@@ -18,7 +18,7 @@ const categories = [
   ["Solar Installer", "Inverters, panels, batteries"],
 ];
 
-const artisans = [
+const demoArtisans = [
   ["Lagos", "Ikeja", "Electrician", "Tunde Bright Electricals", 6.6018, 3.3515, 4.9, 22, "12 min", "Verified"],
   ["Lagos", "Lekki", "AC Technician", "Kemi CoolFix Services", 6.4698, 3.5852, 4.8, 18, "18 min", "Pro"],
   ["Lagos", "Yaba", "Tailor", "Ayo Urban Stitches", 6.5145, 3.3896, 4.7, 31, "20 min", "Verified"],
@@ -62,6 +62,8 @@ const artisans = [
   verification: ["Phone checked", "Location checked", plan === "Basic" ? "Profile reviewed" : "ID reviewed"],
   portfolio: portfolioFor(category),
 }));
+
+let artisans = [...demoArtisans];
 
 function serviceSkills(category) {
   const skills = {
@@ -453,7 +455,52 @@ async function loadTrustSignals() {
     qualityByArtisanId = new Map((qualityResult.data || []).map((item) => [item.artisan_id, item]));
   }
 
-  render();
+}
+
+async function loadRealArtisans() {
+  if (!supabaseClient) return;
+
+  const { data, error } = await supabaseClient
+    .from("artisans")
+    .select(
+      "id, state, area, category, business_name, lat, lng, rating, jobs, response_time, plan, bio, skills, availability, service_radius, completed_jobs, verification_checks, portfolio_items, profile_status",
+    )
+    .eq("profile_status", "active")
+    .order("business_name");
+
+  if (error || !data?.length) {
+    return;
+  }
+
+  artisans = data.map((artisan) => ({
+    id: artisan.id,
+    state: artisan.state,
+    area: artisan.area,
+    category: artisan.category,
+    name: artisan.business_name,
+    lat: Number(artisan.lat),
+    lng: Number(artisan.lng),
+    rating: Number(artisan.rating || 4.5),
+    jobs: Number(artisan.jobs || 0),
+    response: artisan.response_time || "30 min",
+    plan: artisan.plan || "Basic",
+    initials: artisan.business_name
+      .split(" ")
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join(""),
+    bio:
+      artisan.bio ||
+      `${artisan.business_name} is a ${artisan.category.toLowerCase()} serving ${artisan.area}, ${artisan.state}.`,
+    skills: artisan.skills?.length ? artisan.skills : serviceSkills(artisan.category),
+    availability: artisan.availability || "Taking scheduled jobs",
+    radius: Number(artisan.service_radius || 10),
+    completed: Number(artisan.completed_jobs || artisan.jobs || 0),
+    verification: artisan.verification_checks?.length ? artisan.verification_checks : ["Profile reviewed"],
+    portfolio: artisan.portfolio_items?.length ? artisan.portfolio_items : portfolioFor(artisan.category),
+  }));
+
+  syncAreas();
 }
 
 function buildReviewStats(reviews) {
@@ -624,7 +671,12 @@ function closeModals() {
 syncAreas();
 syncJoinAreas();
 render();
-loadTrustSignals();
+initializeDirectory();
+
+async function initializeDirectory() {
+  await Promise.all([loadRealArtisans(), loadTrustSignals()]);
+  render();
+}
 
 function escapeHtml(value) {
   return String(value ?? "")

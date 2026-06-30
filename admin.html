@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FixAm 9ja Admin</title>
     <meta name="robots" content="noindex" />
-    <link rel="stylesheet" href="admin.css?v=phase3" />
+    <link rel="stylesheet" href="admin.css?v=phase4" />
   </head>
   <body>
     <header class="admin-topbar">
@@ -83,6 +83,10 @@
                 <option value="warning">Warning</option>
                 <option value="suspended">Suspended</option>
                 <option value="removed">Removed</option>
+                <option value="draft">Draft</option>
+                <option value="paused">Paused</option>
+                <option value="verified">Verified</option>
+                <option value="pending">Pending</option>
               </select>
             </label>
           </div>
@@ -90,7 +94,8 @@
 
         <div class="metrics-grid" id="metricsGrid">
           <article><strong>0</strong><span>New quotes</span></article>
-          <article><strong>0</strong><span>Applications</span></article>
+          <article><strong>0</strong><span>New applications</span></article>
+          <article><strong>0</strong><span>Live artisans</span></article>
           <article><strong>0</strong><span>In progress</span></article>
           <article><strong>0</strong><span>Completed/listed</span></article>
         </div>
@@ -98,6 +103,7 @@
         <nav class="tabs" aria-label="Dashboard views">
           <button class="is-active" type="button" data-view="quotes">Quote requests</button>
           <button type="button" data-view="applications">Artisan applications</button>
+          <button type="button" data-view="artisans">Artisan profiles</button>
           <button type="button" data-view="reviews">Customer reviews</button>
           <button type="button" data-view="quality">Artisan quality</button>
         </nav>
@@ -106,13 +112,14 @@
 
         <section class="work-list" id="quoteList" aria-live="polite"></section>
         <section class="work-list" id="applicationList" aria-live="polite" hidden></section>
+        <section class="work-list" id="profileList" aria-live="polite" hidden></section>
         <section class="work-list" id="reviewList" aria-live="polite" hidden></section>
         <section class="work-list" id="qualityList" aria-live="polite" hidden></section>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=phase3"></script>
-    <script src="admin.js?v=phase3"></script>
+    <script src="supabase-config.js?v=phase4"></script>
+    <script src="admin.js?v=phase4"></script>
   </body>
 </html>
