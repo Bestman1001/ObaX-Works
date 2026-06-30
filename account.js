@@ -161,14 +161,12 @@ claimProfileButton.addEventListener("click", async () => {
     return;
   }
 
-  setNote(
-    dashboardNote,
-    data?.length
+  await loadDashboard({
+    message: data?.length
       ? `${data[0].business_name} is now connected to your account.`
       : "The profile matched, but Supabase blocked the claim. Run the updated Phase 5 claim policy SQL.",
-    data?.length ? "success" : "error",
-  );
-  await loadDashboard();
+    type: data?.length ? "success" : "error",
+  });
 });
 
 portfolioUploadButton.addEventListener("click", async () => {
@@ -220,7 +218,7 @@ if (supabaseClient) {
   });
 }
 
-async function loadDashboard() {
+async function loadDashboard(note = null) {
   if (!supabaseClient || !currentUser) return;
 
   authPanel.hidden = true;
@@ -265,11 +263,12 @@ async function loadDashboard() {
   renderMedia(mediaResult.data || []);
 
   const firstError = quotesResult.error || applicationsResult.error || artisansResult.error || mediaResult.error;
-  setNote(
-    dashboardNote,
-    firstError ? `${firstError.message}. Make sure the Phase 5 SQL has been run.` : "Account loaded.",
-    firstError ? "error" : "success",
-  );
+  if (firstError) {
+    setNote(dashboardNote, `${firstError.message}. Make sure the Phase 5 SQL has been run.`, "error");
+    return;
+  }
+
+  setNote(dashboardNote, note?.message || "Account loaded.", note?.type || "success");
 }
 
 async function loadProfile() {
