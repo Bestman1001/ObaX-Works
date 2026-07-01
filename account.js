@@ -450,7 +450,7 @@ async function openQuoteDetails(quoteKey) {
     .from("media_uploads")
     .select("file_name, public_url, mime_type, created_at")
     .eq("entity_type", "quote_request")
-    .eq("entity_id", String(quote.id))
+    .in("entity_id", [String(quote.id), quote.request_code])
     .order("created_at", { ascending: false });
 
   quoteDialogBody.innerHTML = renderQuoteDetails(quote, error ? [] : data || [], error?.message || "");
