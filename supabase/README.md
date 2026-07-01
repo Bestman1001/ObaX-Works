@@ -21,11 +21,11 @@ where email = 'you@example.com'
 on conflict (user_id) do update set email = excluded.email;
 ```
 
-The public website gets insert access to `quote_requests`, `artisan_applications`, customer reviews, media metadata, and the public `fixam-media` Storage bucket. Anonymous visitors can read active artisan profiles, public review summaries, public media metadata, and artisan standing so marketplace listings and ratings can update. Anonymous visitors cannot read private quote/customer details.
+The public website gets insert access to `quote_requests`, `artisan_applications`, customer reviews, media metadata, the public `fixam-media` Storage bucket, and the private `fixam-verification` Storage bucket for identity proof uploads. Anonymous visitors can read active artisan profiles, public review summaries, public media metadata, and artisan standing so marketplace listings and ratings can update. Anonymous visitors cannot read private quote/customer details or identity verification media.
 
 ## Artisan Directory Flow
 
-1. Artisan submits the public onboarding form.
+1. Artisan submits the public onboarding form with NIN consent and a selfie/liveness proof.
 2. Admin opens `admin.html` and reviews the application.
 3. Admin clicks `Create artisan profile`.
 4. The profile is inserted into `public.artisans` and appears in the public directory when its profile status is `active`.
@@ -48,9 +48,9 @@ The public website gets insert access to `quote_requests`, `artisan_applications
 5. Claimed artisans can see a quote-lead count for customer requests sent to their artisan profile.
 6. Claimed artisans can upload portfolio media from the account dashboard.
 
-## NIN Verification Edge Function
+## NIN + Selfie/Liveness Verification Edge Function
 
-The browser must never call a NIN provider directly. Deploy `supabase/functions/verify-nin` and store provider credentials as Supabase Edge Function secrets.
+The browser must never call an identity provider directly. Deploy `supabase/functions/verify-nin` and store VerifyMe/QoreID, Youverify, or another provider's credentials as Supabase Edge Function secrets.
 
 Minimum deploy flow:
 
@@ -61,26 +61,29 @@ supabase functions deploy verify-nin
 Production secrets:
 
 ```bash
-supabase secrets set NIN_PROVIDER_NAME=your_provider_name
-supabase secrets set NIN_PROVIDER_URL=https://provider.example/verify-nin
-supabase secrets set NIN_PROVIDER_API_KEY=provider_secret_key
+supabase secrets set IDENTITY_PROVIDER_NAME=your_provider_name
+supabase secrets set IDENTITY_PROVIDER_URL=https://provider.example/verify-identity
+supabase secrets set IDENTITY_PROVIDER_API_KEY=provider_secret_key
 ```
 
 Optional secrets:
 
 ```bash
-supabase secrets set NIN_PROVIDER_AUTH_HEADER=Authorization
-supabase secrets set NIN_PROVIDER_MODE=mock
+supabase secrets set IDENTITY_PROVIDER_AUTH_HEADER=Authorization
+supabase secrets set IDENTITY_PROVIDER_MODE=mock
 ```
 
-`NIN_PROVIDER_MODE=mock` is for local/product testing only. Do not use mock mode for launch. If no provider URL/key is set, applications remain `pending` and the function records that the provider is not configured.
+The older `NIN_PROVIDER_*` names also work for compatibility. `IDENTITY_PROVIDER_MODE=mock` is for local/product testing only. Do not use mock mode for launch. If no provider URL/key is set, applications remain `pending` and the function records that the provider is not configured.
 
 The function stores only:
 
 - `nin_last4`
-- consent timestamp
+- NIN and liveness consent timestamps
+- private selfie/liveness media count
 - verification status
 - provider reference
 - small response summary
 
-It does not store raw NIN.
+It does not store raw NIN. Selfie/liveness files are uploaded to the private `fixam-verification` bucket and are not public portfolio media.
+
+When a provider URL/key is configured, the Edge Function creates temporary signed URLs for the private selfie/liveness files and sends those URLs to the provider. The files remain private in Supabase Storage.

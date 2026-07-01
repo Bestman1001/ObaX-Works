@@ -30,6 +30,10 @@ Deno.serve(async (req) => {
     const phone = String(body.phone || "").trim();
     const nin = String(body.nin || "").trim();
     const consent = body.consent === true;
+    const livenessConsent = body.liveness_consent === true;
+    const selfieMediaPaths = Array.isArray(body.selfie_media_paths)
+      ? body.selfie_media_paths.map((path) => String(path || "").trim()).filter(Boolean).slice(0, 2)
+      : [];
 
     if (!applicationCode || !applicantEmail || !fullName || !phone) {
       return json({ error: "Application code, email, name, and phone are required." }, 400);
@@ -43,6 +47,10 @@ Deno.serve(async (req) => {
       return json({ error: "Identity verification consent is required." }, 400);
     }
 
+    if (!livenessConsent || !selfieMediaPaths.length) {
+      return json({ error: "Selfie/liveness proof and consent are required." }, 400);
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -51,13 +59,17 @@ Deno.serve(async (req) => {
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
-    const result = await verifyWithProvider({ nin, fullName, phone, applicantEmail });
+    const selfieMediaUrls = await createVerificationProofUrls(supabaseAdmin, selfieMediaPaths);
+    const result = await verifyWithProvider({ nin, fullName, phone, applicantEmail, selfieMediaPaths, selfieMediaUrls });
     const now = new Date().toISOString();
 
     const updatePayload = {
       nin_last4: nin.slice(-4),
       nin_consent: true,
       nin_consent_at: now,
+      liveness_consent: true,
+      liveness_consent_at: now,
+      verification_media_count: selfieMediaPaths.length,
       identity_verification_status: result.status,
       identity_verification_reference: result.reference,
     };
@@ -80,6 +92,7 @@ Deno.serve(async (req) => {
       application_code: applicationCode,
       applicant_email: applicantEmail,
       nin_last4: nin.slice(-4),
+      liveness_media_count: selfieMediaPaths.length,
       provider: providerName(),
       provider_reference: result.reference,
       status: result.status,
@@ -103,27 +116,29 @@ async function verifyWithProvider(input: {
   fullName: string;
   phone: string;
   applicantEmail: string;
+  selfieMediaPaths: string[];
+  selfieMediaUrls: string[];
 }): Promise<VerificationResult> {
-  const mode = Deno.env.get("NIN_PROVIDER_MODE") || "pending";
-  const reference = `nin-${crypto.randomUUID()}`;
+  const mode = Deno.env.get("NIN_PROVIDER_MODE") || Deno.env.get("IDENTITY_PROVIDER_MODE") || "pending";
+  const reference = `identity-${crypto.randomUUID()}`;
 
   if (mode === "mock") {
     return {
       status: "verified",
       reference,
-      message: "Mock verification passed. Replace mock mode before production launch.",
+      message: "Mock NIN + selfie/liveness verification passed. Replace mock mode before production launch.",
     };
   }
 
-  const providerUrl = Deno.env.get("NIN_PROVIDER_URL");
-  const providerKey = Deno.env.get("NIN_PROVIDER_API_KEY");
-  const authHeader = Deno.env.get("NIN_PROVIDER_AUTH_HEADER") || "Authorization";
+  const providerUrl = Deno.env.get("NIN_PROVIDER_URL") || Deno.env.get("IDENTITY_PROVIDER_URL");
+  const providerKey = Deno.env.get("NIN_PROVIDER_API_KEY") || Deno.env.get("IDENTITY_PROVIDER_API_KEY");
+  const authHeader = Deno.env.get("NIN_PROVIDER_AUTH_HEADER") || Deno.env.get("IDENTITY_PROVIDER_AUTH_HEADER") || "Authorization";
 
   if (!providerUrl || !providerKey) {
     return {
       status: "pending",
       reference,
-      message: "NIN provider is not configured yet.",
+      message: "Identity provider is not configured yet.",
     };
   }
 
@@ -138,6 +153,9 @@ async function verifyWithProvider(input: {
       full_name: input.fullName,
       phone: input.phone,
       email: input.applicantEmail,
+      selfie_media_paths: input.selfieMediaPaths,
+      selfie_media_urls: input.selfieMediaUrls,
+      liveness_consent: true,
       consent: true,
     }),
   });
@@ -162,6 +180,22 @@ async function verifyWithProvider(input: {
   };
 }
 
+async function createVerificationProofUrls(supabaseAdmin: ReturnType<typeof createClient>, paths: string[]) {
+  const urls: string[] = [];
+
+  for (const path of paths) {
+    const { data, error } = await supabaseAdmin.storage
+      .from("fixam-verification")
+      .createSignedUrl(path, 60 * 10);
+
+    if (!error && data?.signedUrl) {
+      urls.push(data.signedUrl);
+    }
+  }
+
+  return urls;
+}
+
 function normalizeProviderResponse(response: Record<string, unknown>) {
   const statusValue = String(response.status || response.verification_status || "").toLowerCase();
   const verified =
@@ -183,7 +217,7 @@ function normalizeProviderResponse(response: Record<string, unknown>) {
   return {
     status: verified ? "verified" : failed ? "failed" : "pending",
     reference,
-    message: message || (verified ? "NIN verification passed." : failed ? "NIN verification failed." : "NIN verification is pending."),
+    message: message || (verified ? "Identity verification passed." : failed ? "Identity verification failed." : "Identity verification is pending."),
   } as VerificationResult;
 }
 
@@ -200,8 +234,8 @@ function summarizeProviderResponse(response: unknown) {
 }
 
 function providerName() {
-  if (Deno.env.get("NIN_PROVIDER_MODE") === "mock") return "mock";
-  return Deno.env.get("NIN_PROVIDER_NAME") || "configured_provider";
+  if (Deno.env.get("NIN_PROVIDER_MODE") === "mock" || Deno.env.get("IDENTITY_PROVIDER_MODE") === "mock") return "mock";
+  return Deno.env.get("NIN_PROVIDER_NAME") || Deno.env.get("IDENTITY_PROVIDER_NAME") || "configured_provider";
 }
 
 function json(payload: Record<string, unknown>, status = 200) {

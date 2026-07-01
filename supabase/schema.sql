@@ -21,6 +21,19 @@ set public = excluded.public,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'fixam-verification',
+  'fixam-verification',
+  false,
+  52428800,
+  array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
 create table if not exists public.user_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
@@ -136,6 +149,9 @@ alter table public.artisan_applications
   add column if not exists nin_last4 text,
   add column if not exists nin_consent boolean not null default false,
   add column if not exists nin_consent_at timestamptz,
+  add column if not exists liveness_consent boolean not null default false,
+  add column if not exists liveness_consent_at timestamptz,
+  add column if not exists verification_media_count integer not null default 0,
   add column if not exists identity_verification_status text not null default 'pending',
   add column if not exists identity_verification_reference text,
   add column if not exists subscription_status text not null default 'pending',
@@ -156,6 +172,7 @@ create table if not exists public.identity_verification_attempts (
   application_code text not null,
   applicant_email text,
   nin_last4 text,
+  liveness_media_count integer not null default 0,
   provider text not null default 'configured_provider',
   provider_reference text,
   status text not null default 'pending' check (status in ('pending', 'verified', 'failed')),
@@ -163,6 +180,9 @@ create table if not exists public.identity_verification_attempts (
   response_summary jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.identity_verification_attempts
+  add column if not exists liveness_media_count integer not null default 0;
 
 create index if not exists identity_verification_attempts_application_idx
   on public.identity_verification_attempts (application_code, created_at desc);
@@ -191,6 +211,8 @@ create policy "Anyone can create artisan applications"
   with check (
     nin_consent = true
     and nin_last4 ~ '^[0-9]{4}$'
+    and liveness_consent = true
+    and verification_media_count > 0
     and applicant_email like '%@%'
     and identity_verification_status = 'pending'
     and subscription_status = 'pending'
@@ -610,7 +632,7 @@ create table if not exists public.media_uploads (
   storage_path text unique not null,
   public_url text,
   entity_type text not null check (
-    entity_type in ('quote_request', 'artisan_application', 'artisan_profile', 'customer_review')
+    entity_type in ('quote_request', 'artisan_application', 'artisan_profile', 'customer_review', 'identity_verification')
   ),
   entity_id text not null,
   uploaded_by_role text not null check (uploaded_by_role in ('customer', 'artisan', 'admin')),
@@ -621,6 +643,13 @@ create table if not exists public.media_uploads (
   visibility text not null default 'public' check (visibility in ('public', 'private')),
   created_at timestamptz not null default now()
 );
+
+alter table public.media_uploads
+  drop constraint if exists media_uploads_entity_type_check;
+
+alter table public.media_uploads
+  add constraint media_uploads_entity_type_check
+  check (entity_type in ('quote_request', 'artisan_application', 'artisan_profile', 'customer_review', 'identity_verification'));
 
 create index if not exists media_uploads_entity_idx
   on public.media_uploads (entity_type, entity_id);
@@ -645,7 +674,7 @@ create policy "Anyone can read public media metadata"
   on public.media_uploads
   for select
   to anon, authenticated
-  using (visibility = 'public');
+  using (visibility = 'public' and entity_type <> 'identity_verification');
 
 create policy "Users can read own media metadata"
   on public.media_uploads
@@ -665,6 +694,8 @@ create policy "Admins can read all media metadata"
 drop policy if exists "Anyone can read FixAm media files" on storage.objects;
 drop policy if exists "Anyone can upload FixAm media files" on storage.objects;
 drop policy if exists "Users can update own FixAm media files" on storage.objects;
+drop policy if exists "Anyone can upload FixAm verification files" on storage.objects;
+drop policy if exists "Admins can read FixAm verification files" on storage.objects;
 
 create policy "Anyone can read FixAm media files"
   on storage.objects
@@ -684,3 +715,21 @@ create policy "Users can update own FixAm media files"
   to authenticated
   using (bucket_id = 'fixam-media' and owner = auth.uid())
   with check (bucket_id = 'fixam-media' and owner = auth.uid());
+
+create policy "Anyone can upload FixAm verification files"
+  on storage.objects
+  for insert
+  to anon, authenticated
+  with check (bucket_id = 'fixam-verification');
+
+create policy "Admins can read FixAm verification files"
+  on storage.objects
+  for select
+  to authenticated
+  using (
+    bucket_id = 'fixam-verification'
+    and exists (
+      select 1 from public.admin_profiles
+      where admin_profiles.user_id = auth.uid()
+    )
+  );

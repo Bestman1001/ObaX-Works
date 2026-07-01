@@ -413,6 +413,7 @@ joinForm.addEventListener("submit", async (event) => {
 
   const applicationCode = `F9-A-${Date.now().toString().slice(-6)}`;
   const mediaFiles = selectedFiles("#joinMedia");
+  const selfieFiles = selectedFiles("#joinSelfie", 1);
   const fullName = document.querySelector("#joinName").value.trim();
   const applicantEmail = document.querySelector("#joinEmail").value.trim().toLowerCase();
   const nin = document.querySelector("#joinNin").value.trim();
@@ -438,6 +439,16 @@ joinForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (!selfieFiles.length) {
+    setJoinStatus("Add a clear selfie or short liveness video for identity verification.", "error");
+    return;
+  }
+
+  if (!isAllowedMedia(selfieFiles[0])) {
+    setJoinStatus("Selfie/liveness proof must be a supported image/video under 50MB.", "error");
+    return;
+  }
+
   const payload = {
     application_code: applicationCode,
     full_name: fullName,
@@ -453,7 +464,10 @@ joinForm.addEventListener("submit", async (event) => {
     nin_last4: nin.slice(-4),
     nin_consent: hasNinConsent,
     nin_consent_at: new Date().toISOString(),
+    liveness_consent: hasNinConsent,
+    liveness_consent_at: new Date().toISOString(),
     identity_verification_status: "pending",
+    verification_media_count: selfieFiles.length,
     subscription_status: "pending",
     subscription_plan: document.querySelector("#joinPlan").value,
     subscription_amount: subscriptionAmountForPlan(document.querySelector("#joinPlan").value),
@@ -484,13 +498,35 @@ joinForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  setJoinStatus("Application received. Checking identity verification...", "");
+  setJoinStatus("Application received. Uploading private selfie/liveness proof...", "");
+  const verificationMediaResult = await uploadMediaFiles({
+    files: selfieFiles,
+    folder: `identity-verification/${applicationCode}`,
+    entityType: "identity_verification",
+    entityId: applicationCode,
+    role: "artisan",
+    bucket: "fixam-verification",
+    visibility: "private",
+  });
+
+  if (verificationMediaResult.error) {
+    setJoinStatus(
+      `Application ${applicationCode} received, but selfie/liveness upload needs retry: ${verificationMediaResult.error}`,
+      "error",
+    );
+    joinSubmitButton.textContent = "Try again";
+    joinSubmitButton.disabled = false;
+    return;
+  }
+
+  setJoinStatus("Selfie/liveness proof received. Checking identity verification...", "");
   const verificationResult = await verifyNinForApplication({
     applicationCode,
     applicantEmail,
     fullName,
     phone: payload.phone,
     nin,
+    selfieMediaPaths: verificationMediaResult.paths || [],
   });
 
   const mediaResult = await uploadMediaFiles({
@@ -514,7 +550,7 @@ joinForm.addEventListener("submit", async (event) => {
   syncJoinAreas();
 });
 
-async function verifyNinForApplication({ applicationCode, applicantEmail, fullName, phone, nin }) {
+async function verifyNinForApplication({ applicationCode, applicantEmail, fullName, phone, nin, selfieMediaPaths }) {
   if (!supabaseClient) return { status: "pending", message: "Supabase is not configured." };
 
   const { data, error } = await supabaseClient.functions.invoke("verify-nin", {
@@ -524,6 +560,8 @@ async function verifyNinForApplication({ applicationCode, applicantEmail, fullNa
       full_name: fullName,
       phone,
       nin,
+      selfie_media_paths: selfieMediaPaths,
+      liveness_consent: true,
       consent: true,
     },
   });
@@ -724,16 +762,17 @@ async function currentUserId() {
   return user?.id || null;
 }
 
-function selectedFiles(selector) {
+function selectedFiles(selector, limit = 4) {
   const input = document.querySelector(selector);
-  return input ? [...input.files].slice(0, 4) : [];
+  return input ? [...input.files].slice(0, limit) : [];
 }
 
-async function uploadMediaFiles({ files, folder, entityType, entityId, role }) {
+async function uploadMediaFiles({ files, folder, entityType, entityId, role, bucket = "fixam-media", visibility = "public" }) {
   if (!supabaseClient || !files.length) return { count: 0 };
 
   const uploadedBy = await currentUserId();
   let count = 0;
+  const paths = [];
 
   for (const file of files) {
     if (!isAllowedMedia(file)) {
@@ -741,19 +780,20 @@ async function uploadMediaFiles({ files, folder, entityType, entityId, role }) {
     }
 
     const path = `${folder}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-    const { error: uploadError } = await supabaseClient.storage.from("fixam-media").upload(path, file, {
+    const { error: uploadError } = await supabaseClient.storage.from(bucket).upload(path, file, {
       cacheControl: "3600",
       upsert: false,
     });
 
     if (uploadError) return { count, error: uploadError.message };
 
-    const {
-      data: { publicUrl },
-    } = supabaseClient.storage.from("fixam-media").getPublicUrl(path);
+    const publicUrl =
+      visibility === "public"
+        ? supabaseClient.storage.from(bucket).getPublicUrl(path).data.publicUrl
+        : null;
 
     const { error: metadataError } = await supabaseClient.from("media_uploads").insert({
-      bucket: "fixam-media",
+      bucket,
       storage_path: path,
       public_url: publicUrl,
       entity_type: entityType,
@@ -763,14 +803,15 @@ async function uploadMediaFiles({ files, folder, entityType, entityId, role }) {
       file_name: file.name,
       mime_type: file.type || "application/octet-stream",
       file_size: file.size,
-      visibility: "public",
+      visibility,
     });
 
     if (metadataError) return { count, error: metadataError.message };
     count += 1;
+    paths.push(path);
   }
 
-  return { count };
+  return { count, paths };
 }
 
 function isAllowedMedia(file) {

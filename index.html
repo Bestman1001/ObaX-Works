@@ -230,6 +230,10 @@
             <input id="joinNin" type="password" inputmode="numeric" minlength="11" maxlength="11" placeholder="11-digit NIN" required />
           </label>
           <label>
+            <span>Selfie/liveness proof</span>
+            <input id="joinSelfie" type="file" accept="image/*,video/*" capture="user" required />
+          </label>
+          <label>
             <span>Years of experience</span>
             <input id="joinExperience" type="number" min="0" max="60" placeholder="e.g. 5" required />
           </label>
@@ -243,7 +247,7 @@
           </label>
           <label class="full-span consent-row">
             <input id="joinNinConsent" type="checkbox" required />
-            <span>I agree that FixAm 9ja may verify my identity using my NIN for marketplace trust and safety.</span>
+            <span>I agree that FixAm 9ja may verify my identity using my NIN and selfie/liveness proof for marketplace trust and safety.</span>
           </label>
           <button class="primary-action large" type="submit">Create artisan profile</button>
           <p class="form-note" id="joinNote">Founding artisans can apply now. Visibility starts after identity verification, then paid subscription continues after the launch period.</p>
@@ -313,6 +317,6 @@
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=phase5"></script>
-    <script src="app.js?v=phase6-nin-edge"></script>
+    <script src="app.js?v=phase6-liveness-ready"></script>
   </body>
 </html>

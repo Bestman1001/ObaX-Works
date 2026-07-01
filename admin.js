@@ -204,11 +204,11 @@ async function loadDashboard() {
       )
       .order("created_at", { ascending: false })
       .limit(100),
-    supabaseClient
-      .from("artisan_applications")
-      .select(
-        "id, application_code, applicant_user_id, applicant_email, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, nin_last4, nin_consent, identity_verification_status, subscription_status, subscription_amount, created_at",
-      )
+      supabaseClient
+        .from("artisan_applications")
+        .select(
+          "id, application_code, applicant_user_id, applicant_email, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, nin_last4, nin_consent, liveness_consent, verification_media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
+        )
       .order("created_at", { ascending: false })
       .limit(100),
     supabaseClient
@@ -389,6 +389,8 @@ function renderApplicationCard(application) {
           <span class="badge">${escapeHtml(application.preferred_plan)}</span>
           <span class="badge">NIN ****${escapeHtml(application.nin_last4 || "----")}</span>
           <span class="badge">${application.nin_consent ? "NIN consent captured" : "No NIN consent"}</span>
+          <span class="badge">${application.liveness_consent ? "Selfie/liveness consent" : "No selfie consent"}</span>
+          <span class="badge">${application.verification_media_count || 0} verification proof</span>
           <span class="badge">${escapeHtml(application.identity_verification_status || "pending")}</span>
           <span class="badge">${escapeHtml(application.subscription_status || "pending")}</span>
           <span class="badge">${formatNaira(application.subscription_amount)}</span>

@@ -296,11 +296,11 @@ async function loadDashboard(note = null) {
       .eq("customer_user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(20),
-    supabaseClient
-      .from("artisan_applications")
-      .select(
-        "application_code, applicant_email, trade, state, area, status, media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
-      )
+      supabaseClient
+        .from("artisan_applications")
+        .select(
+          "application_code, applicant_email, trade, state, area, status, media_count, verification_media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
+        )
       .eq("applicant_user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -669,7 +669,7 @@ function renderApplications(items) {
               <strong>${escapeHtml(item.application_code)} - ${escapeHtml(item.trade)}</strong>
               <small>${escapeHtml(item.applicant_email || currentUser.email || "No login email")}</small>
               <small>${escapeHtml(item.area)}, ${escapeHtml(item.state)}</small>
-              <small>${escapeHtml(item.status)} - ${item.media_count || 0} media</small>
+              <small>${escapeHtml(item.status)} - ${item.media_count || 0} portfolio media - ${item.verification_media_count || 0} identity proof</small>
               <small>NIN ${escapeHtml(item.identity_verification_status || "pending")} - Subscription ${escapeHtml(
                 item.subscription_status || "pending",
               )} - ${formatNaira(item.subscription_amount)}</small>
