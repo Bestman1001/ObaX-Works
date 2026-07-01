@@ -130,6 +130,10 @@ async function verifyWithProvider(input: {
     };
   }
 
+  if (providerName() === "qoreid" || Deno.env.get("QOREID_CLIENT_ID")) {
+    return verifyWithQoreId(input, reference);
+  }
+
   const providerUrl = Deno.env.get("NIN_PROVIDER_URL") || Deno.env.get("IDENTITY_PROVIDER_URL");
   const providerKey = Deno.env.get("NIN_PROVIDER_API_KEY") || Deno.env.get("IDENTITY_PROVIDER_API_KEY");
   const authHeader = Deno.env.get("NIN_PROVIDER_AUTH_HEADER") || Deno.env.get("IDENTITY_PROVIDER_AUTH_HEADER") || "Authorization";
@@ -180,6 +184,103 @@ async function verifyWithProvider(input: {
   };
 }
 
+async function verifyWithQoreId(
+  input: {
+    nin: string;
+    fullName: string;
+    phone: string;
+    applicantEmail: string;
+    selfieMediaPaths: string[];
+    selfieMediaUrls: string[];
+  },
+  fallbackReference: string,
+): Promise<VerificationResult> {
+  const clientId = Deno.env.get("QOREID_CLIENT_ID");
+  const clientSecret = Deno.env.get("QOREID_CLIENT_SECRET");
+  const baseUrl = Deno.env.get("QOREID_BASE_URL") || "https://api.qoreid.com";
+
+  if (!clientId || !clientSecret) {
+    return {
+      status: "pending",
+      reference: fallbackReference,
+      message: "QoreID client credentials are not configured yet.",
+    };
+  }
+
+  if (!input.selfieMediaUrls.length) {
+    return {
+      status: "failed",
+      reference: fallbackReference,
+      message: "Selfie/liveness proof could not be prepared for QoreID.",
+    };
+  }
+
+  const tokenResponse = await fetch(`${baseUrl}/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      clientId,
+      secret: clientSecret,
+    }),
+  });
+
+  const tokenPayload = await parseProviderJson(tokenResponse);
+
+  if (!tokenResponse.ok) {
+    return {
+      status: "failed",
+      reference: fallbackReference,
+      message: `QoreID token request failed with HTTP ${tokenResponse.status}.`,
+      providerResponse: tokenPayload,
+    };
+  }
+
+  const accessToken = extractAccessToken(tokenPayload);
+  if (!accessToken) {
+    return {
+      status: "failed",
+      reference: fallbackReference,
+      message: "QoreID token response did not include an access token.",
+      providerResponse: tokenPayload,
+    };
+  }
+
+  const verificationResponse = await fetch(`${baseUrl}/v1/ng/identities/face-verification/nin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      idNumber: input.nin,
+      photoUrl: input.selfieMediaUrls[0],
+    }),
+  });
+
+  const providerResponse = await parseProviderJson(verificationResponse);
+
+  if (!verificationResponse.ok) {
+    return {
+      status: "failed",
+      reference: fallbackReference,
+      message: `QoreID NIN face verification failed with HTTP ${verificationResponse.status}.`,
+      providerResponse,
+    };
+  }
+
+  const normalized = normalizeProviderResponse(providerResponse);
+  return {
+    status: normalized.status,
+    reference: normalized.reference || fallbackReference,
+    message: normalized.message,
+    providerResponse,
+  };
+}
+
 async function createVerificationProofUrls(supabaseAdmin: ReturnType<typeof createClient>, paths: string[]) {
   const urls: string[] = [];
 
@@ -196,22 +297,65 @@ async function createVerificationProofUrls(supabaseAdmin: ReturnType<typeof crea
   return urls;
 }
 
+async function parseProviderJson(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch (_error) {
+    return { raw: text.slice(0, 500) };
+  }
+}
+
+function extractAccessToken(response: unknown) {
+  if (!response || typeof response !== "object") return "";
+
+  const source = response as Record<string, unknown>;
+  return String(
+    source.accessToken ||
+      source.access_token ||
+      source.token ||
+      source.bearerToken ||
+      source.jwt ||
+      "",
+  );
+}
+
 function normalizeProviderResponse(response: Record<string, unknown>) {
-  const statusValue = String(response.status || response.verification_status || "").toLowerCase();
+  const nestedStatus = typeof response.status === "object" && response.status
+    ? (response.status as Record<string, unknown>)
+    : {};
+  const faceCheck = typeof response.summary === "object" && response.summary
+    ? (response.summary as Record<string, unknown>).face_verification_check
+    : null;
+  const faceMatch = typeof faceCheck === "object" && faceCheck
+    ? (faceCheck as Record<string, unknown>).match
+    : null;
+  const statusValue = String(
+    response.status ||
+      response.verification_status ||
+      nestedStatus.status ||
+      nestedStatus.state ||
+      "",
+  ).toLowerCase();
   const verified =
     response.verified === true ||
     response.success === true ||
+    faceMatch === true ||
     statusValue === "verified" ||
     statusValue === "success" ||
+    statusValue === "complete" ||
     statusValue === "matched";
 
   const failed =
     response.verified === false ||
+    faceMatch === false ||
     statusValue === "failed" ||
     statusValue === "rejected" ||
     statusValue === "not_found";
 
-  const reference = String(response.reference || response.request_id || response.transaction_id || "");
+  const reference = String(response.reference || response.request_id || response.transaction_id || response.id || "");
   const message = String(response.message || response.description || "");
 
   return {
@@ -225,10 +369,22 @@ function summarizeProviderResponse(response: unknown) {
   if (!response || typeof response !== "object") return {};
 
   const source = response as Record<string, unknown>;
+  const status = typeof source.status === "object" && source.status
+    ? (source.status as Record<string, unknown>)
+    : {};
+  const summary = typeof source.summary === "object" && source.summary
+    ? (source.summary as Record<string, unknown>)
+    : {};
+  const faceCheck = typeof summary.face_verification_check === "object" && summary.face_verification_check
+    ? (summary.face_verification_check as Record<string, unknown>)
+    : {};
+
   return {
-    status: source.status || source.verification_status || null,
+    status: status.status || status.state || source.status || source.verification_status || null,
     verified: source.verified ?? source.success ?? null,
-    reference: source.reference || source.request_id || source.transaction_id || null,
+    face_match: faceCheck.match ?? null,
+    match_score: faceCheck.match_score ?? null,
+    reference: source.reference || source.request_id || source.transaction_id || source.id || null,
     message: source.message || source.description || null,
   };
 }
