@@ -151,6 +151,35 @@ create index if not exists artisan_applications_status_idx
 create index if not exists artisan_applications_state_idx
   on public.artisan_applications (state);
 
+create table if not exists public.identity_verification_attempts (
+  id uuid primary key default gen_random_uuid(),
+  application_code text not null,
+  applicant_email text,
+  nin_last4 text,
+  provider text not null default 'configured_provider',
+  provider_reference text,
+  status text not null default 'pending' check (status in ('pending', 'verified', 'failed')),
+  message text,
+  response_summary jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists identity_verification_attempts_application_idx
+  on public.identity_verification_attempts (application_code, created_at desc);
+
+alter table public.identity_verification_attempts enable row level security;
+
+drop policy if exists "Admins can read identity verification attempts" on public.identity_verification_attempts;
+
+create policy "Admins can read identity verification attempts"
+  on public.identity_verification_attempts
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.admin_profiles
+    where admin_profiles.user_id = auth.uid()
+  ));
+
 alter table public.artisan_applications enable row level security;
 
 drop policy if exists "Anyone can create artisan applications" on public.artisan_applications;

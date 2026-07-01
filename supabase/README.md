@@ -47,3 +47,40 @@ The public website gets insert access to `quote_requests`, `artisan_applications
 4. Artisans can claim a listed profile when their account phone number matches an unowned artisan profile.
 5. Claimed artisans can see a quote-lead count for customer requests sent to their artisan profile.
 6. Claimed artisans can upload portfolio media from the account dashboard.
+
+## NIN Verification Edge Function
+
+The browser must never call a NIN provider directly. Deploy `supabase/functions/verify-nin` and store provider credentials as Supabase Edge Function secrets.
+
+Minimum deploy flow:
+
+```bash
+supabase functions deploy verify-nin
+```
+
+Production secrets:
+
+```bash
+supabase secrets set NIN_PROVIDER_NAME=your_provider_name
+supabase secrets set NIN_PROVIDER_URL=https://provider.example/verify-nin
+supabase secrets set NIN_PROVIDER_API_KEY=provider_secret_key
+```
+
+Optional secrets:
+
+```bash
+supabase secrets set NIN_PROVIDER_AUTH_HEADER=Authorization
+supabase secrets set NIN_PROVIDER_MODE=mock
+```
+
+`NIN_PROVIDER_MODE=mock` is for local/product testing only. Do not use mock mode for launch. If no provider URL/key is set, applications remain `pending` and the function records that the provider is not configured.
+
+The function stores only:
+
+- `nin_last4`
+- consent timestamp
+- verification status
+- provider reference
+- small response summary
+
+It does not store raw NIN.

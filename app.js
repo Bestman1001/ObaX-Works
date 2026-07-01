@@ -484,6 +484,15 @@ joinForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  setJoinStatus("Application received. Checking identity verification...", "");
+  const verificationResult = await verifyNinForApplication({
+    applicationCode,
+    applicantEmail,
+    fullName,
+    phone: payload.phone,
+    nin,
+  });
+
   const mediaResult = await uploadMediaFiles({
     files: mediaFiles,
     folder: `artisan-applications/${applicationCode}`,
@@ -497,13 +506,49 @@ joinForm.addEventListener("submit", async (event) => {
       ? `Application ${applicationCode} received, but media upload needs retry: ${mediaResult.error}`
       : `Application ${applicationCode} received with ${mediaResult.count} media file${
           mediaResult.count === 1 ? "" : "s"
-        }. Next step: identity verification and subscription activation before listing.`,
-    mediaResult.error ? "error" : "success",
+        }. ${verificationStatusMessage(verificationResult)}`,
+    mediaResult.error || verificationResult.status === "failed" ? "error" : "success",
   );
   joinSubmitButton.textContent = "Application sent";
   joinForm.reset();
   syncJoinAreas();
 });
+
+async function verifyNinForApplication({ applicationCode, applicantEmail, fullName, phone, nin }) {
+  if (!supabaseClient) return { status: "pending", message: "Supabase is not configured." };
+
+  const { data, error } = await supabaseClient.functions.invoke("verify-nin", {
+    body: {
+      application_code: applicationCode,
+      applicant_email: applicantEmail,
+      full_name: fullName,
+      phone,
+      nin,
+      consent: true,
+    },
+  });
+
+  if (error) {
+    return {
+      status: "pending",
+      message: "Identity verification is pending because the verification service is not available yet.",
+    };
+  }
+
+  return data || { status: "pending", message: "Identity verification is pending." };
+}
+
+function verificationStatusMessage(result) {
+  if (result.status === "verified") {
+    return "Identity verification passed. We will activate visibility after launch approval/subscription.";
+  }
+
+  if (result.status === "failed") {
+    return "Identity verification could not be completed. FixAm 9ja will review it manually.";
+  }
+
+  return `${result.message || "Identity verification is pending."} Next step: subscription activation before listing.`;
+}
 
 async function loadTrustSignals() {
   if (!supabaseClient) return;
