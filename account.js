@@ -19,6 +19,8 @@ const refreshButton = document.querySelector("#refreshButton");
 const claimProfileButton = document.querySelector("#claimProfileButton");
 const portfolioUploadButton = document.querySelector("#portfolioUploadButton");
 const quoteList = document.querySelector("#quoteList");
+const quoteLeadList = document.querySelector("#quoteLeadList");
+const quoteLeadBadge = document.querySelector("#quoteLeadBadge");
 const applicationList = document.querySelector("#applicationList");
 const artisanProfile = document.querySelector("#artisanProfile");
 const mediaList = document.querySelector("#mediaList");
@@ -296,13 +298,26 @@ async function loadDashboard(note = null) {
   ]);
 
   ownedArtisan = artisansResult.data?.[0] || null;
+  const quoteLeadsResult = ownedArtisan
+    ? await supabaseClient
+        .from("quote_requests")
+        .select("request_code, customer_name, customer_phone, job_location, urgency, status, media_count, created_at", {
+          count: "exact",
+        })
+        .eq("artisan_id", ownedArtisan.id)
+        .order("created_at", { ascending: false })
+        .limit(20)
+    : { data: [], count: 0, error: null };
+
   renderQuotes(quotesResult.data || []);
+  renderQuoteLeads(quoteLeadsResult.data || [], quoteLeadsResult.count || 0);
   renderApplications(applicationsResult.data || []);
   renderArtisanProfile(artisansResult.data || []);
   fillArtisanProfileForm();
   renderMedia(mediaResult.data || []);
 
-  const firstError = quotesResult.error || applicationsResult.error || artisansResult.error || mediaResult.error;
+  const firstError =
+    quotesResult.error || applicationsResult.error || artisansResult.error || mediaResult.error || quoteLeadsResult.error;
   if (firstError) {
     setNote(dashboardNote, `${firstError.message}. Make sure the Phase 5 SQL has been run.`, "error");
     return;
@@ -364,6 +379,27 @@ function renderQuotes(items) {
         )
         .join("")
     : `<article><span>No quote requests linked to this account yet.</span></article>`;
+}
+
+function renderQuoteLeads(items, total) {
+  quoteLeadBadge.textContent = String(total);
+  quoteLeadBadge.classList.toggle("is-empty", total === 0);
+
+  quoteLeadList.innerHTML = ownedArtisan
+    ? items.length
+      ? items
+          .map(
+            (item) => `
+              <article>
+                <strong>${escapeHtml(item.request_code)} - ${escapeHtml(item.customer_name)}</strong>
+                <small>${escapeHtml(item.job_location)} - ${escapeHtml(item.urgency)} - ${escapeHtml(item.status)}</small>
+                <small>${escapeHtml(item.customer_phone)} - ${item.media_count || 0} media</small>
+              </article>
+            `,
+          )
+          .join("")
+      : `<article><span>No customer quote leads have arrived for your artisan profile yet.</span></article>`
+    : `<article><span>Claim an artisan profile to see customer quote leads here.</span></article>`;
 }
 
 function renderApplications(items) {

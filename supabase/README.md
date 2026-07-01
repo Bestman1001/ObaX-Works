@@ -45,4 +45,5 @@ The public website gets insert access to `quote_requests`, `artisan_applications
 2. Customers or artisans open `account.html` and create/sign into an account.
 3. Public quote requests, artisan applications, and reviews can attach up to four image/video files per submission.
 4. Artisans can claim a listed profile when their account phone number matches an unowned artisan profile.
-5. Claimed artisans can upload portfolio media from the account dashboard.
+5. Claimed artisans can see a quote-lead count for customer requests sent to their artisan profile.
+6. Claimed artisans can upload portfolio media from the account dashboard.

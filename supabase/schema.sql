@@ -272,6 +272,7 @@ create policy "Artisans can claim unowned matching phone profile"
 
 drop policy if exists "Admins can read quote requests" on public.quote_requests;
 drop policy if exists "Admins can update quote requests" on public.quote_requests;
+drop policy if exists "Artisans can read own received quote requests" on public.quote_requests;
 
 create policy "Admins can read quote requests"
   on public.quote_requests
@@ -293,6 +294,16 @@ create policy "Admins can update quote requests"
   with check (exists (
     select 1 from public.admin_profiles
     where admin_profiles.user_id = auth.uid()
+  ));
+
+create policy "Artisans can read own received quote requests"
+  on public.quote_requests
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.artisans
+    where artisans.id = quote_requests.artisan_id
+      and artisans.owner_user_id = auth.uid()
   ));
 
 drop policy if exists "Customers can read own quote requests" on public.quote_requests;
