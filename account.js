@@ -24,10 +24,16 @@ const quoteLeadBadge = document.querySelector("#quoteLeadBadge");
 const applicationList = document.querySelector("#applicationList");
 const artisanProfile = document.querySelector("#artisanProfile");
 const mediaList = document.querySelector("#mediaList");
+const quoteDialog = document.querySelector("#quoteDialog");
+const quoteDialogType = document.querySelector("#quoteDialogType");
+const quoteDialogTitle = document.querySelector("#quoteDialogTitle");
+const quoteDialogBody = document.querySelector("#quoteDialogBody");
+const quoteDialogClose = document.querySelector("#quoteDialogClose");
 
 let currentUser = null;
 let currentProfile = null;
 let ownedArtisan = null;
+let quoteRecords = new Map();
 
 if (!supabaseClient) {
   setNote(authNote, "Supabase is not configured yet. Accounts cannot be used.", "error");
@@ -119,6 +125,15 @@ signOutButton.addEventListener("click", async () => {
 });
 
 refreshButton.addEventListener("click", loadDashboard);
+quoteDialogClose.addEventListener("click", () => quoteDialog.close());
+quoteDialog.addEventListener("click", (event) => {
+  if (event.target === quoteDialog) quoteDialog.close();
+});
+
+quoteList.addEventListener("click", handleQuoteClick);
+quoteLeadList.addEventListener("click", handleQuoteClick);
+quoteList.addEventListener("keydown", handleQuoteKeydown);
+quoteLeadList.addEventListener("keydown", handleQuoteKeydown);
 
 profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -274,7 +289,7 @@ async function loadDashboard(note = null) {
   const [quotesResult, applicationsResult, artisansResult, mediaResult] = await Promise.all([
     supabaseClient
       .from("quote_requests")
-      .select("request_code, artisan_name, artisan_category, job_location, status, media_count, created_at")
+      .select("id, request_code, artisan_name, artisan_category, job_location, urgency, job_details, status, media_count, created_at")
       .eq("customer_user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -301,14 +316,16 @@ async function loadDashboard(note = null) {
   const quoteLeadsResult = ownedArtisan
     ? await supabaseClient
         .from("quote_requests")
-        .select("request_code, customer_name, customer_phone, job_location, urgency, status, media_count, created_at", {
-          count: "exact",
-        })
+        .select(
+          "id, request_code, customer_name, customer_phone, artisan_name, artisan_category, job_location, urgency, job_details, status, media_count, created_at",
+          { count: "exact" },
+        )
         .eq("artisan_id", ownedArtisan.id)
         .order("created_at", { ascending: false })
         .limit(20)
     : { data: [], count: 0, error: null };
 
+  quoteRecords = new Map();
   renderQuotes(quotesResult.data || []);
   renderQuoteLeads(quoteLeadsResult.data || [], quoteLeadsResult.count || 0);
   renderApplications(applicationsResult.data || []);
@@ -366,14 +383,15 @@ function fillProfileForm() {
 }
 
 function renderQuotes(items) {
+  items.forEach((item) => quoteRecords.set(`customer:${item.id}`, { ...item, viewType: "customer" }));
   quoteList.innerHTML = items.length
     ? items
         .map(
           (item) => `
-            <article>
+            <article class="quote-item" role="button" tabindex="0" data-quote-key="customer:${escapeHtml(item.id)}">
               <strong>${escapeHtml(item.request_code)} - ${escapeHtml(item.artisan_name)}</strong>
               <small>${escapeHtml(item.artisan_category)} at ${escapeHtml(item.job_location)}</small>
-              <small>${escapeHtml(item.status)} - ${item.media_count || 0} media</small>
+              <small>${escapeHtml(item.status)} - ${item.media_count || 0} media - open details</small>
             </article>
           `,
         )
@@ -384,22 +402,119 @@ function renderQuotes(items) {
 function renderQuoteLeads(items, total) {
   quoteLeadBadge.textContent = String(total);
   quoteLeadBadge.classList.toggle("is-empty", total === 0);
+  items.forEach((item) => quoteRecords.set(`lead:${item.id}`, { ...item, viewType: "lead" }));
 
   quoteLeadList.innerHTML = ownedArtisan
     ? items.length
       ? items
           .map(
             (item) => `
-              <article>
+              <article class="quote-item" role="button" tabindex="0" data-quote-key="lead:${escapeHtml(item.id)}">
                 <strong>${escapeHtml(item.request_code)} - ${escapeHtml(item.customer_name)}</strong>
                 <small>${escapeHtml(item.job_location)} - ${escapeHtml(item.urgency)} - ${escapeHtml(item.status)}</small>
-                <small>${escapeHtml(item.customer_phone)} - ${item.media_count || 0} media</small>
+                <small>${escapeHtml(item.customer_phone)} - ${item.media_count || 0} media - open details</small>
               </article>
             `,
           )
           .join("")
       : `<article><span>No customer quote leads have arrived for your artisan profile yet.</span></article>`
     : `<article><span>Claim an artisan profile to see customer quote leads here.</span></article>`;
+}
+
+function handleQuoteClick(event) {
+  const item = event.target.closest(".quote-item");
+  if (!item) return;
+  openQuoteDetails(item.dataset.quoteKey);
+}
+
+function handleQuoteKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const item = event.target.closest(".quote-item");
+  if (!item) return;
+  event.preventDefault();
+  openQuoteDetails(item.dataset.quoteKey);
+}
+
+async function openQuoteDetails(quoteKey) {
+  const quote = quoteRecords.get(quoteKey);
+  if (!quote) return;
+
+  quoteDialogType.textContent = quote.viewType === "lead" ? "Quote lead" : "Your quote request";
+  quoteDialogTitle.textContent = `${quote.request_code} - ${
+    quote.viewType === "lead" ? quote.customer_name : quote.artisan_name
+  }`;
+  quoteDialogBody.innerHTML = renderQuoteDetails(quote, []);
+  quoteDialog.showModal();
+
+  const { data, error } = await supabaseClient
+    .from("media_uploads")
+    .select("file_name, public_url, mime_type, created_at")
+    .eq("entity_type", "quote_request")
+    .eq("entity_id", String(quote.id))
+    .order("created_at", { ascending: false });
+
+  quoteDialogBody.innerHTML = renderQuoteDetails(quote, error ? [] : data || [], error?.message || "");
+}
+
+function renderQuoteDetails(quote, mediaItems, mediaError = "") {
+  const detailName = quote.viewType === "lead" ? quote.customer_name : quote.artisan_name;
+  const phoneBlock =
+    quote.viewType === "lead"
+      ? `<article><span>Customer phone</span>${escapeHtml(quote.customer_phone)}</article>`
+      : `<article><span>Trade</span>${escapeHtml(quote.artisan_category)}</article>`;
+
+  return `
+    <div class="quote-detail-grid">
+      <article><span>Name</span>${escapeHtml(detailName)}</article>
+      <article><span>Location</span>${escapeHtml(quote.job_location)}</article>
+      <article><span>Urgency</span>${escapeHtml(quote.urgency || "Not specified")}</article>
+      <article><span>Status</span>${escapeHtml(quote.status)}</article>
+      ${phoneBlock}
+      <article><span>Media count</span>${quote.media_count || 0}</article>
+    </div>
+    <div class="quote-details-text">
+      <span>Job details</span>
+      <p>${escapeHtml(quote.job_details || "No job details supplied.")}</p>
+    </div>
+    <div>
+      <h3>Attached photos/videos</h3>
+      ${
+        mediaError
+          ? `<p class="form-note error-note">${escapeHtml(mediaError)}</p>`
+          : renderQuoteMedia(mediaItems)
+      }
+    </div>
+  `;
+}
+
+function renderQuoteMedia(items) {
+  if (!items.length) {
+    return `<p class="form-note">No photos or videos attached to this quote.</p>`;
+  }
+
+  return `
+    <div class="quote-media-grid">
+      ${items
+        .map((item) => {
+          const media =
+            item.mime_type?.startsWith("image/")
+              ? `<a href="${escapeHtml(item.public_url)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(
+                  item.public_url,
+                )}" alt="${escapeHtml(item.file_name)}" /></a>`
+              : item.mime_type?.startsWith("video/")
+                ? `<video src="${escapeHtml(item.public_url)}" controls></video>`
+                : `<a href="${escapeHtml(item.public_url)}" target="_blank" rel="noreferrer">Open file</a>`;
+
+          return `
+            <article class="quote-media-item">
+              ${media}
+              <a href="${escapeHtml(item.public_url)}" target="_blank" rel="noreferrer">${escapeHtml(item.file_name)}</a>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
 }
 
 function renderApplications(items) {

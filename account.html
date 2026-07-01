@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FixAm 9ja Accounts</title>
     <meta name="robots" content="noindex" />
-    <link rel="stylesheet" href="account.css?v=phase5-quote-leads" />
+    <link rel="stylesheet" href="account.css?v=phase5-clickable-quotes" />
   </head>
   <body>
     <header class="account-topbar">
@@ -177,8 +177,19 @@
       </section>
     </main>
 
+    <dialog class="quote-dialog" id="quoteDialog">
+      <div class="quote-dialog-header">
+        <div>
+          <p class="eyebrow" id="quoteDialogType">Quote request</p>
+          <h2 id="quoteDialogTitle">Quote details</h2>
+        </div>
+        <button class="secondary-action" type="button" id="quoteDialogClose">Close</button>
+      </div>
+      <div class="quote-dialog-body" id="quoteDialogBody"></div>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=phase5"></script>
-    <script src="account.js?v=phase5-quote-leads"></script>
+    <script src="account.js?v=phase5-clickable-quotes"></script>
   </body>
 </html>
