@@ -519,6 +519,27 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: #f3faf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.consent-row input {
+  width: auto;
+  margin-top: 4px;
+}
+
+.consent-row span {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 footer {
   display: flex;
   justify-content: space-between;

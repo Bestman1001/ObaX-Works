@@ -129,6 +129,16 @@ alter table public.artisan_applications
 alter table public.artisan_applications
   add column if not exists media_count integer not null default 0;
 
+alter table public.artisan_applications
+  add column if not exists nin_last4 text,
+  add column if not exists nin_consent boolean not null default false,
+  add column if not exists nin_consent_at timestamptz,
+  add column if not exists identity_verification_status text not null default 'pending',
+  add column if not exists identity_verification_reference text,
+  add column if not exists subscription_status text not null default 'pending',
+  add column if not exists subscription_plan text,
+  add column if not exists subscription_amount integer;
+
 create index if not exists artisan_applications_created_at_idx
   on public.artisan_applications (created_at desc);
 
@@ -146,7 +156,12 @@ create policy "Anyone can create artisan applications"
   on public.artisan_applications
   for insert
   to anon, authenticated
-  with check (true);
+  with check (
+    nin_consent = true
+    and nin_last4 ~ '^[0-9]{4}$'
+    and identity_verification_status = 'pending'
+    and subscription_status = 'pending'
+  );
 
 create table if not exists public.admin_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -202,6 +217,18 @@ alter table public.artisans
 alter table public.artisans
   add column if not exists profile_image_url text;
 
+alter table public.artisans
+  add column if not exists nin_last4 text,
+  add column if not exists identity_verification_status text not null default 'pending',
+  add column if not exists identity_verification_reference text,
+  add column if not exists identity_verified_at timestamptz,
+  add column if not exists subscription_status text not null default 'pending',
+  add column if not exists subscription_plan text not null default 'monthly',
+  add column if not exists subscription_amount integer not null default 2500,
+  add column if not exists subscription_started_at timestamptz,
+  add column if not exists subscription_expires_at timestamptz,
+  add column if not exists payment_reference text;
+
 create index if not exists artisans_state_area_idx
   on public.artisans (state, area);
 
@@ -227,7 +254,12 @@ create policy "Anyone can read active artisans"
   on public.artisans
   for select
   to anon, authenticated
-  using (profile_status = 'active');
+  using (
+    profile_status = 'active'
+    and verification_status = 'verified'
+    and identity_verification_status = 'verified'
+    and subscription_status = 'active'
+  );
 
 create policy "Admins can manage artisans"
   on public.artisans

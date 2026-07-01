@@ -298,13 +298,17 @@ async function loadDashboard(note = null) {
       .limit(20),
     supabaseClient
       .from("artisan_applications")
-      .select("application_code, trade, state, area, status, media_count, created_at")
+      .select(
+        "application_code, trade, state, area, status, media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
+      )
       .eq("applicant_user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(20),
     supabaseClient
       .from("artisans")
-      .select("id, business_name, category, state, area, phone, plan, profile_status, verification_status, bio, availability, service_radius, updated_at")
+      .select(
+        "id, business_name, category, state, area, phone, plan, profile_status, verification_status, identity_verification_status, subscription_status, subscription_plan, subscription_amount, bio, availability, service_radius, updated_at",
+      )
       .eq("owner_user_id", currentUser.id)
       .limit(5),
     supabaseClient
@@ -665,6 +669,9 @@ function renderApplications(items) {
               <strong>${escapeHtml(item.application_code)} - ${escapeHtml(item.trade)}</strong>
               <small>${escapeHtml(item.area)}, ${escapeHtml(item.state)}</small>
               <small>${escapeHtml(item.status)} - ${item.media_count || 0} media</small>
+              <small>NIN ${escapeHtml(item.identity_verification_status || "pending")} - Subscription ${escapeHtml(
+                item.subscription_status || "pending",
+              )} - ${formatNaira(item.subscription_amount)}</small>
             </article>
           `,
         )
@@ -681,6 +688,9 @@ function renderArtisanProfile(items) {
               <strong>${escapeHtml(item.business_name)}</strong>
               <small>${escapeHtml(item.category)} in ${escapeHtml(item.area)}, ${escapeHtml(item.state)}</small>
               <small>${escapeHtml(item.profile_status)} - ${escapeHtml(item.plan)} - ${escapeHtml(item.verification_status)}</small>
+              <small>NIN ${escapeHtml(item.identity_verification_status || "pending")} - Subscription ${escapeHtml(
+                item.subscription_status || "pending",
+              )} - ${formatNaira(item.subscription_amount)}</small>
               <small>${escapeHtml(item.availability || "Taking scheduled jobs")} - ${item.service_radius || 10} mile radius</small>
             </article>
           `,
@@ -812,6 +822,10 @@ function accountRedirectUrl() {
   redirectUrl.hash = "";
   redirectUrl.search = "";
   return redirectUrl.href;
+}
+
+function formatNaira(value) {
+  return `NGN ${Number(value || 0).toLocaleString("en-NG")}`;
 }
 
 function escapeHtml(value) {

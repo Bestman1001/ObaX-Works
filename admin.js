@@ -9,6 +9,8 @@ const applicationStatuses = ["new", "reviewing", "approved", "rejected", "listed
 const artisanProfileStatuses = ["draft", "active", "paused", "suspended", "removed"];
 const artisanPlans = ["Basic", "Verified", "Pro", "Business"];
 const verificationStatuses = ["pending", "reviewed", "verified"];
+const identityVerificationStatuses = ["pending", "verified", "failed"];
+const subscriptionStatuses = ["pending", "active", "past_due", "cancelled", "expired"];
 const reviewVisibilityStatuses = ["public", "flagged", "hidden"];
 const artisanStandingStatuses = ["active", "warning", "suspended", "removed"];
 const states = ["Lagos", "Abuja/FCT", "Edo", "Ogun", "Delta", "Rivers"];
@@ -205,14 +207,14 @@ async function loadDashboard() {
     supabaseClient
       .from("artisan_applications")
       .select(
-        "id, application_code, applicant_user_id, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, created_at",
+        "id, application_code, applicant_user_id, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, nin_last4, nin_consent, identity_verification_status, subscription_status, subscription_amount, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(100),
     supabaseClient
       .from("artisans")
       .select(
-        "id, application_id, business_name, owner_name, phone, category, state, area, lat, lng, plan, profile_status, verification_status, bio, skills, availability, service_radius, jobs, completed_jobs, rating, response_time, verification_checks, portfolio_items, created_at, updated_at",
+        "id, application_id, business_name, owner_name, phone, category, state, area, lat, lng, plan, profile_status, verification_status, identity_verification_status, identity_verified_at, nin_last4, subscription_status, subscription_plan, subscription_amount, subscription_expires_at, payment_reference, bio, skills, availability, service_radius, jobs, completed_jobs, rating, response_time, verification_checks, portfolio_items, created_at, updated_at",
       )
       .order("updated_at", { ascending: false })
       .limit(200),
@@ -306,6 +308,8 @@ function filterArtisans(rows) {
         statusFilter.value === "all" ||
         row.profile_status === statusFilter.value ||
         row.verification_status === statusFilter.value ||
+        row.identity_verification_status === statusFilter.value ||
+        row.subscription_status === statusFilter.value ||
         row.plan === statusFilter.value,
     );
 }
@@ -382,6 +386,11 @@ function renderApplicationCard(application) {
           <span class="badge">${escapeHtml(application.phone)}</span>
           <span class="badge">${escapeHtml(application.area)}, ${escapeHtml(application.state)}</span>
           <span class="badge">${escapeHtml(application.preferred_plan)}</span>
+          <span class="badge">NIN ****${escapeHtml(application.nin_last4 || "----")}</span>
+          <span class="badge">${application.nin_consent ? "NIN consent captured" : "No NIN consent"}</span>
+          <span class="badge">${escapeHtml(application.identity_verification_status || "pending")}</span>
+          <span class="badge">${escapeHtml(application.subscription_status || "pending")}</span>
+          <span class="badge">${formatNaira(application.subscription_amount)}</span>
           <span class="badge">${application.years_experience} yrs</span>
           <span class="badge">${application.media_count || 0} media</span>
         </div>
@@ -416,6 +425,9 @@ function renderArtisanCard(artisan) {
           <span class="badge gold">${escapeHtml(artisan.profile_status)}</span>
           <span class="badge">${escapeHtml(artisan.plan)}</span>
           <span class="badge">${escapeHtml(artisan.verification_status)}</span>
+          <span class="badge">NIN ${escapeHtml(artisan.identity_verification_status || "pending")}</span>
+          <span class="badge">Sub ${escapeHtml(artisan.subscription_status || "pending")}</span>
+          <span class="badge">${formatNaira(artisan.subscription_amount)}</span>
           <span class="badge">Updated ${formatDate(artisan.updated_at || artisan.created_at)}</span>
         </div>
         <h3>${escapeHtml(artisan.business_name)}</h3>
@@ -450,6 +462,18 @@ function renderArtisanCard(artisan) {
           <span>Verification</span>
           <select data-artisan-id="${artisan.id}" data-artisan-field="verification_status">
             ${verificationStatuses.map((status) => option(status, artisan.verification_status)).join("")}
+          </select>
+        </label>
+        <label>
+          <span>NIN status</span>
+          <select data-artisan-id="${artisan.id}" data-artisan-field="identity_verification_status">
+            ${identityVerificationStatuses.map((status) => option(status, artisan.identity_verification_status)).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Subscription</span>
+          <select data-artisan-id="${artisan.id}" data-artisan-field="subscription_status">
+            ${subscriptionStatuses.map((status) => option(status, artisan.subscription_status)).join("")}
           </select>
         </label>
       </div>
@@ -605,15 +629,20 @@ async function createArtisanFromApplication(applicationId) {
     area: application.area,
     lat: coords.lat,
     lng: coords.lng,
-    plan: normalizePlan(application.preferred_plan),
-    profile_status: "active",
-    verification_status: "reviewed",
+    plan: "Verified",
+    profile_status: "draft",
+    verification_status: "pending",
+    identity_verification_status: "pending",
+    nin_last4: application.nin_last4 || null,
+    subscription_status: "pending",
+    subscription_plan: normalizeSubscriptionPlan(application.preferred_plan),
+    subscription_amount: Number(application.subscription_amount || subscriptionAmountForPlan(application.preferred_plan)),
     bio: application.work_summary,
     skills: skillsFromApplication(application),
     availability: "Taking scheduled jobs",
     service_radius: 10,
     response_time: "30 min",
-    verification_checks: ["Application reviewed", "Phone captured", "Profile listed"],
+    verification_checks: ["Application reviewed", "NIN consent captured", "Payment pending"],
     portfolio_items: [`${application.trade} work sample`, `${application.area} customer job`],
   };
 
@@ -634,19 +663,32 @@ async function createArtisanFromApplication(applicationId) {
   setNote(
     dashboardNote,
     statusResult.error
-      ? `${data.business_name} is live, but the application status could not be updated: ${statusResult.error.message}`
-      : `${data.business_name} is now live in the artisan directory.`,
+      ? `${data.business_name} profile was created, but the application status could not be updated: ${statusResult.error.message}`
+      : `${data.business_name} profile created as draft. Activate only after NIN verification and payment.`,
     statusResult.error ? "error" : "success",
   );
   renderDashboard();
 }
 
 async function updateArtisanField(artisanId, field, value) {
-  const allowedFields = ["profile_status", "plan", "verification_status"];
+  const allowedFields = [
+    "profile_status",
+    "plan",
+    "verification_status",
+    "identity_verification_status",
+    "subscription_status",
+  ];
   if (!allowedFields.includes(field)) return;
 
   setNote(dashboardNote, "Updating artisan profile...", "");
   const payload = { [field]: value, updated_at: new Date().toISOString() };
+  if (field === "identity_verification_status" && value === "verified") {
+    payload.verification_status = "verified";
+    payload.identity_verified_at = new Date().toISOString();
+  }
+  if (field === "subscription_status" && value === "active") {
+    payload.subscription_started_at = new Date().toISOString();
+  }
   const { error } = await supabaseClient.from("artisans").update(payload).eq("id", artisanId);
 
   if (error) {
@@ -794,6 +836,26 @@ function coordinatesFor(state, area) {
 function normalizePlan(plan) {
   const match = artisanPlans.find((item) => item.toLowerCase() === String(plan).toLowerCase());
   return match || "Basic";
+}
+
+function normalizeSubscriptionPlan(plan) {
+  const value = String(plan || "").toLowerCase();
+  if (value.includes("annual") || value.includes("year")) return "annual";
+  if (value.includes("biannual") || value.includes("6")) return "biannual";
+  return "monthly";
+}
+
+function subscriptionAmountForPlan(plan) {
+  const amounts = {
+    monthly: 2500,
+    biannual: 12000,
+    annual: 24000,
+  };
+  return amounts[normalizeSubscriptionPlan(plan)] || amounts.monthly;
+}
+
+function formatNaira(value) {
+  return `NGN ${Number(value || 0).toLocaleString("en-NG")}`;
 }
 
 function skillsFromApplication(application) {

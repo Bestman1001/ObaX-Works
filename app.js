@@ -225,6 +225,8 @@ function renderCards(matches) {
             </div>
             <div class="badge-row">
               <span class="badge ${artisan.plan === "Pro" ? "gold" : ""}">FixAm ${artisan.plan}</span>
+              <span class="badge gold">NIN verified</span>
+              <span class="badge">Subscription active</span>
               ${qualityBadge(artisan)}
               <span class="badge">${artisan.distance.toFixed(1)} miles away</span>
               <span class="badge">${artisan.jobs} jobs</span>
@@ -411,6 +413,19 @@ joinForm.addEventListener("submit", async (event) => {
 
   const applicationCode = `F9-A-${Date.now().toString().slice(-6)}`;
   const mediaFiles = selectedFiles("#joinMedia");
+  const nin = document.querySelector("#joinNin").value.trim();
+  const hasNinConsent = document.querySelector("#joinNinConsent").checked;
+
+  if (!/^\d{11}$/.test(nin)) {
+    setJoinStatus("Enter a valid 11-digit NIN before submitting.", "error");
+    return;
+  }
+
+  if (!hasNinConsent) {
+    setJoinStatus("Identity verification consent is required before an artisan can be listed.", "error");
+    return;
+  }
+
   const payload = {
     application_code: applicationCode,
     full_name: document.querySelector("#joinName").value.trim(),
@@ -422,6 +437,13 @@ joinForm.addEventListener("submit", async (event) => {
     years_experience: Number(document.querySelector("#joinExperience").value),
     work_summary: document.querySelector("#joinDetails").value.trim(),
     applicant_user_id: await currentUserId(),
+    nin_last4: nin.slice(-4),
+    nin_consent: hasNinConsent,
+    nin_consent_at: new Date().toISOString(),
+    identity_verification_status: "pending",
+    subscription_status: "pending",
+    subscription_plan: document.querySelector("#joinPlan").value,
+    subscription_amount: subscriptionAmountForPlan(document.querySelector("#joinPlan").value),
     media_count: mediaFiles.length,
     source: "website",
   };
@@ -462,7 +484,7 @@ joinForm.addEventListener("submit", async (event) => {
       ? `Application ${applicationCode} received, but media upload needs retry: ${mediaResult.error}`
       : `Application ${applicationCode} received with ${mediaResult.count} media file${
           mediaResult.count === 1 ? "" : "s"
-        }. FixAm 9ja will review it before listing.`,
+        }. Next step: identity verification and subscription activation before listing.`,
     mediaResult.error ? "error" : "success",
   );
   joinSubmitButton.textContent = "Application sent";
@@ -493,22 +515,35 @@ async function loadTrustSignals() {
 
 }
 
+function subscriptionAmountForPlan(plan) {
+  const amounts = {
+    monthly: 2500,
+    biannual: 12000,
+    annual: 24000,
+  };
+  return amounts[plan] || amounts.monthly;
+}
+
 async function loadRealArtisans() {
   if (!supabaseClient) return;
 
   const { data, error } = await supabaseClient
     .from("artisans")
     .select(
-      "id, state, area, category, business_name, lat, lng, rating, jobs, response_time, plan, bio, skills, availability, service_radius, completed_jobs, verification_checks, portfolio_items, profile_status",
+      "id, state, area, category, business_name, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status",
     )
     .eq("profile_status", "active")
+    .eq("verification_status", "verified")
+    .eq("subscription_status", "active")
     .order("business_name");
 
-  if (error || !data?.length) {
+  if (error) {
+    artisans = [];
+    syncAreas();
     return;
   }
 
-  artisans = data.map((artisan) => ({
+  artisans = (data || []).map((artisan) => ({
     id: artisan.id,
     state: artisan.state,
     area: artisan.area,
@@ -520,6 +555,7 @@ async function loadRealArtisans() {
     jobs: Number(artisan.jobs || 0),
     response: artisan.response_time || "30 min",
     plan: artisan.plan || "Basic",
+    subscription: artisan.subscription_plan || "monthly",
     initials: artisan.business_name
       .split(" ")
       .slice(0, 2)
@@ -532,7 +568,9 @@ async function loadRealArtisans() {
     availability: artisan.availability || "Taking scheduled jobs",
     radius: Number(artisan.service_radius || 10),
     completed: Number(artisan.completed_jobs || artisan.jobs || 0),
-    verification: artisan.verification_checks?.length ? artisan.verification_checks : ["Profile reviewed"],
+    verification: artisan.verification_checks?.length
+      ? artisan.verification_checks
+      : ["NIN verified", "Subscription active"],
     portfolio: artisan.portfolio_items?.length ? artisan.portfolio_items : portfolioFor(artisan.category),
   }));
 

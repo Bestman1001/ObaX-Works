@@ -16,7 +16,7 @@
       integrity="sha256-p4NxAoJBhIINfQJQhv/0Xz4dU1Y3rI6QGzV3G4rjvXw="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=phase5" />
+    <link rel="stylesheet" href="styles.css?v=phase6-trust-payments" />
   </head>
   <body>
     <header class="topbar">
@@ -158,22 +158,22 @@
         </div>
         <div class="plans-grid">
           <article class="plan">
-            <h3>Basic</h3>
-            <p class="price">Free</p>
-            <p>Starter profile, category listing, customer contact, and limited search visibility.</p>
+            <h3>Monthly</h3>
+            <p class="price">NGN 2,500/mo</p>
+            <p>NIN verification, trust badge, customer quote requests, and live marketplace visibility.</p>
           </article>
           <article class="plan featured">
-            <h3>Verified</h3>
-            <p class="price">NGN 3,500/mo</p>
-            <p>Verification badge, higher ranking, portfolio boost, reviews, and local trust placement.</p>
+            <h3>6 months</h3>
+            <p class="price">NGN 12,000</p>
+            <p>Save 20% against monthly billing, with the same verified badge and lead access.</p>
           </article>
           <article class="plan">
-            <h3>Pro</h3>
-            <p class="price">NGN 8,500/mo</p>
-            <p>Featured listings, quote requests, faster lead alerts, service analytics, and priority support.</p>
+            <h3>Yearly</h3>
+            <p class="price">NGN 24,000</p>
+            <p>Best value for serious artisans ready to build a trusted FixAm 9ja profile for the year.</p>
           </article>
           <article class="plan">
-            <h3>Business</h3>
+            <h3>Team</h3>
             <p class="price">Custom</p>
             <p>For service teams with multiple workers, locations, supervisors, and enterprise job handling.</p>
           </article>
@@ -216,11 +216,14 @@
           <label>
             <span>Preferred plan</span>
             <select id="joinPlan">
-              <option>Basic</option>
-              <option>Verified</option>
-              <option>Pro</option>
-              <option>Business</option>
+              <option value="monthly">Monthly - NGN 2,500</option>
+              <option value="biannual">6 months - NGN 12,000</option>
+              <option value="annual">Yearly - NGN 24,000</option>
             </select>
+          </label>
+          <label>
+            <span>NIN</span>
+            <input id="joinNin" type="password" inputmode="numeric" minlength="11" maxlength="11" placeholder="11-digit NIN" required />
           </label>
           <label>
             <span>Years of experience</span>
@@ -234,8 +237,12 @@
             <span>Portfolio images/videos</span>
             <input id="joinMedia" type="file" accept="image/*,video/*" multiple />
           </label>
+          <label class="full-span consent-row">
+            <input id="joinNinConsent" type="checkbox" required />
+            <span>I agree that FixAm 9ja may verify my identity using my NIN for marketplace trust and safety.</span>
+          </label>
           <button class="primary-action large" type="submit">Create artisan profile</button>
-          <p class="form-note" id="joinNote">Applications are reviewed before artisans appear in the marketplace.</p>
+          <p class="form-note" id="joinNote">Artisans appear in the marketplace only after identity verification and an active subscription.</p>
         </form>
       </section>
     </main>
@@ -302,6 +309,6 @@
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=phase5"></script>
-    <script src="app.js?v=phase5"></script>
+    <script src="app.js?v=phase6-trust-payments"></script>
   </body>
 </html>
