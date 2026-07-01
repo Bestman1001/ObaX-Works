@@ -101,7 +101,8 @@ p {
 }
 
 .primary-action,
-.secondary-action {
+.secondary-action,
+.danger-action {
   min-height: 48px;
   padding: 0 16px;
   border-radius: 8px;
@@ -119,6 +120,19 @@ p {
   color: var(--deep);
   background: white;
   border: 1px solid var(--line);
+}
+
+.danger-action {
+  color: #8f2c1f;
+  background: #fff3ef;
+  border: 1px solid #efc6bb;
+}
+
+.primary-action:disabled,
+.secondary-action:disabled,
+.danger-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .account-shell {
@@ -469,6 +483,38 @@ textarea:focus {
   padding: 20px;
 }
 
+.quote-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  background: #ecfff7;
+  border: 1px solid #94dbc0;
+  border-radius: 8px;
+}
+
+.quote-actions span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--green);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.quote-actions strong {
+  color: var(--deep);
+  line-height: 1.45;
+}
+
+.quote-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .quote-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -556,6 +602,7 @@ textarea:focus {
   }
 
   .quote-dialog-header,
+  .quote-actions,
   .quote-detail-grid,
   .quote-media-grid {
     grid-template-columns: 1fr;
@@ -566,6 +613,14 @@ textarea:focus {
   }
 
   .quote-dialog-header button {
+    width: 100%;
+  }
+
+  .quote-action-buttons {
+    justify-content: stretch;
+  }
+
+  .quote-action-buttons button {
     width: 100%;
   }
 }

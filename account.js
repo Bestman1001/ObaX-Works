@@ -134,6 +134,7 @@ quoteList.addEventListener("click", handleQuoteClick);
 quoteLeadList.addEventListener("click", handleQuoteClick);
 quoteList.addEventListener("keydown", handleQuoteKeydown);
 quoteLeadList.addEventListener("keydown", handleQuoteKeydown);
+quoteDialogBody.addEventListener("click", handleQuoteAction);
 
 profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -444,7 +445,7 @@ async function openQuoteDetails(quoteKey) {
     quote.viewType === "lead" ? quote.customer_name : quote.artisan_name
   }`;
   quoteDialogBody.innerHTML = renderQuoteDetails(quote, []);
-  quoteDialog.showModal();
+  if (!quoteDialog.open) quoteDialog.showModal();
 
   const { data, error } = await supabaseClient
     .from("media_uploads")
@@ -462,8 +463,10 @@ function renderQuoteDetails(quote, mediaItems, mediaError = "") {
     quote.viewType === "lead"
       ? `<article><span>Customer phone</span>${escapeHtml(quote.customer_phone)}</article>`
       : `<article><span>Trade</span>${escapeHtml(quote.artisan_category)}</article>`;
+  const actionBlock = quote.viewType === "lead" ? renderQuoteActions(quote) : "";
 
   return `
+    ${actionBlock}
     <div class="quote-detail-grid">
       <article><span>Name</span>${escapeHtml(detailName)}</article>
       <article><span>Location</span>${escapeHtml(quote.job_location)}</article>
@@ -485,6 +488,76 @@ function renderQuoteDetails(quote, mediaItems, mediaError = "") {
       }
     </div>
   `;
+}
+
+function renderQuoteActions(quote) {
+  const disabled = ["accepted", "declined", "completed", "cancelled"].includes(quote.status);
+  const statusText =
+    quote.status === "accepted"
+      ? "You accepted this job. Contact the customer to agree price, timing, and next steps."
+      : quote.status === "declined"
+        ? "You declined this quote. It will stay in your history for reference."
+        : quote.status === "contacted"
+          ? "You marked this customer as contacted. Accept the job when you are ready to proceed."
+          : "Choose what you want to do with this customer request.";
+
+  return `
+    <section class="quote-actions" data-quote-id="${escapeHtml(quote.id)}">
+      <div>
+        <span>Artisan response</span>
+        <strong>${escapeHtml(statusText)}</strong>
+      </div>
+      <div class="quote-action-buttons">
+        <button class="primary-action" type="button" data-quote-action="accepted" ${disabled ? "disabled" : ""}>
+          Accept job
+        </button>
+        <button class="secondary-action" type="button" data-quote-action="contacted" ${
+          disabled || quote.status === "contacted" ? "disabled" : ""
+        }>
+          Mark contacted
+        </button>
+        <button class="danger-action" type="button" data-quote-action="declined" ${disabled ? "disabled" : ""}>
+          Decline
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+async function handleQuoteAction(event) {
+  const button = event.target.closest("[data-quote-action]");
+  if (!button) return;
+
+  const actionPanel = button.closest("[data-quote-id]");
+  const quote = [...quoteRecords.values()].find((item) => item.id === actionPanel?.dataset.quoteId);
+  if (!quote || quote.viewType !== "lead") return;
+
+  const nextStatus = button.dataset.quoteAction;
+  const originalText = button.textContent;
+  button.textContent = "Saving...";
+  button.disabled = true;
+
+  const { error } = await supabaseClient.rpc("update_quote_request_status", {
+    p_quote_id: quote.id,
+    p_status: nextStatus,
+  });
+
+  if (error) {
+    button.textContent = originalText;
+    button.disabled = false;
+    setNote(dashboardNote, `Could not update quote: ${error.message}`, "error");
+    quoteDialogBody.insertAdjacentHTML(
+      "afterbegin",
+      `<p class="form-note error-note">${escapeHtml(error.message)}</p>`,
+    );
+    return;
+  }
+
+  quote.status = nextStatus;
+  quoteRecords.set(`lead:${quote.id}`, quote);
+  setNote(dashboardNote, `${quote.request_code} updated to ${nextStatus}.`, "success");
+  await openQuoteDetails(`lead:${quote.id}`);
+  await loadDashboard();
 }
 
 function renderQuoteMedia(items) {

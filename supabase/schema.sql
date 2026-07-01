@@ -273,6 +273,7 @@ create policy "Artisans can claim unowned matching phone profile"
 drop policy if exists "Admins can read quote requests" on public.quote_requests;
 drop policy if exists "Admins can update quote requests" on public.quote_requests;
 drop policy if exists "Artisans can read own received quote requests" on public.quote_requests;
+drop policy if exists "Artisans can update own received quote status" on public.quote_requests;
 
 create policy "Admins can read quote requests"
   on public.quote_requests
@@ -305,6 +306,40 @@ create policy "Artisans can read own received quote requests"
     where artisans.id = quote_requests.artisan_id
       and artisans.owner_user_id = auth.uid()
   ));
+
+create or replace function public.update_quote_request_status(p_quote_id uuid, p_status text)
+returns public.quote_requests
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_quote public.quote_requests;
+begin
+  if p_status not in ('contacted', 'accepted', 'declined') then
+    raise exception 'Unsupported quote status: %', p_status;
+  end if;
+
+  update public.quote_requests
+  set status = p_status
+  where id = p_quote_id
+    and exists (
+      select 1
+      from public.artisans
+      where artisans.id = quote_requests.artisan_id
+        and artisans.owner_user_id = auth.uid()
+    )
+  returning * into updated_quote;
+
+  if updated_quote.id is null then
+    raise exception 'Quote request not found for this artisan account.';
+  end if;
+
+  return updated_quote;
+end;
+$$;
+
+grant execute on function public.update_quote_request_status(uuid, text) to authenticated;
 
 drop policy if exists "Customers can read own quote requests" on public.quote_requests;
 
