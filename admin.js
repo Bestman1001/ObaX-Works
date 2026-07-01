@@ -207,7 +207,7 @@ async function loadDashboard() {
     supabaseClient
       .from("artisan_applications")
       .select(
-        "id, application_code, applicant_user_id, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, nin_last4, nin_consent, identity_verification_status, subscription_status, subscription_amount, created_at",
+        "id, application_code, applicant_user_id, applicant_email, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, nin_last4, nin_consent, identity_verification_status, subscription_status, subscription_amount, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(100),
@@ -384,6 +384,7 @@ function renderApplicationCard(application) {
         <p>${escapeHtml(application.work_summary)}</p>
         <div class="work-meta">
           <span class="badge">${escapeHtml(application.phone)}</span>
+          <span class="badge">${escapeHtml(application.applicant_email || "No email")}</span>
           <span class="badge">${escapeHtml(application.area)}, ${escapeHtml(application.state)}</span>
           <span class="badge">${escapeHtml(application.preferred_plan)}</span>
           <span class="badge">NIN ****${escapeHtml(application.nin_last4 || "----")}</span>

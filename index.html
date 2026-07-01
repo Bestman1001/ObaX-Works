@@ -16,7 +16,7 @@
       integrity="sha256-p4NxAoJBhIINfQJQhv/0Xz4dU1Y3rI6QGzV3G4rjvXw="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=phase6-trust-payments" />
+    <link rel="stylesheet" href="styles.css?v=phase6-founder-email" />
   </head>
   <body>
     <header class="topbar">
@@ -160,17 +160,17 @@
           <article class="plan">
             <h3>Monthly</h3>
             <p class="price">NGN 2,500/mo</p>
-            <p>NIN verification, trust badge, customer quote requests, and live marketplace visibility.</p>
+            <p>Founding artisans get launch visibility first, then continue with paid verified access.</p>
           </article>
           <article class="plan featured">
             <h3>6 months</h3>
             <p class="price">NGN 12,000</p>
-            <p>Save 20% against monthly billing, with the same verified badge and lead access.</p>
+            <p>Save 20% after launch, with the same verified badge and customer lead access.</p>
           </article>
           <article class="plan">
             <h3>Yearly</h3>
             <p class="price">NGN 24,000</p>
-            <p>Best value for serious artisans ready to build a trusted FixAm 9ja profile for the year.</p>
+            <p>Best value after the free launch period for artisans ready to build all year.</p>
           </article>
           <article class="plan">
             <h3>Team</h3>
@@ -188,7 +188,11 @@
         <form class="join-form" id="joinForm">
           <label>
             <span>Full name</span>
-            <input id="joinName" type="text" placeholder="e.g. Chinedu Okafor" required />
+            <input id="joinName" type="text" autocomplete="name" placeholder="e.g. Chinedu Okafor" required />
+          </label>
+          <label>
+            <span>Email for login</span>
+            <input id="joinEmail" type="email" autocomplete="email" placeholder="you@example.com" required />
           </label>
           <label>
             <span>Trade</span>
@@ -242,7 +246,7 @@
             <span>I agree that FixAm 9ja may verify my identity using my NIN for marketplace trust and safety.</span>
           </label>
           <button class="primary-action large" type="submit">Create artisan profile</button>
-          <p class="form-note" id="joinNote">Artisans appear in the marketplace only after identity verification and an active subscription.</p>
+          <p class="form-note" id="joinNote">Founding artisans can apply now. Visibility starts after identity verification, then paid subscription continues after the launch period.</p>
         </form>
       </section>
     </main>
@@ -309,6 +313,6 @@
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=phase5"></script>
-    <script src="app.js?v=phase6-trust-payments"></script>
+    <script src="app.js?v=phase6-founder-email"></script>
   </body>
 </html>

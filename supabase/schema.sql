@@ -127,6 +127,9 @@ alter table public.artisan_applications
   add column if not exists applicant_user_id uuid references auth.users(id) on delete set null;
 
 alter table public.artisan_applications
+  add column if not exists applicant_email text;
+
+alter table public.artisan_applications
   add column if not exists media_count integer not null default 0;
 
 alter table public.artisan_applications
@@ -159,6 +162,7 @@ create policy "Anyone can create artisan applications"
   with check (
     nin_consent = true
     and nin_last4 ~ '^[0-9]{4}$'
+    and applicant_email like '%@%'
     and identity_verification_status = 'pending'
     and subscription_status = 'pending'
   );

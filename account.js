@@ -299,7 +299,7 @@ async function loadDashboard(note = null) {
     supabaseClient
       .from("artisan_applications")
       .select(
-        "application_code, trade, state, area, status, media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
+        "application_code, applicant_email, trade, state, area, status, media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
       )
       .eq("applicant_user_id", currentUser.id)
       .order("created_at", { ascending: false })
@@ -667,6 +667,7 @@ function renderApplications(items) {
           (item) => `
             <article>
               <strong>${escapeHtml(item.application_code)} - ${escapeHtml(item.trade)}</strong>
+              <small>${escapeHtml(item.applicant_email || currentUser.email || "No login email")}</small>
               <small>${escapeHtml(item.area)}, ${escapeHtml(item.state)}</small>
               <small>${escapeHtml(item.status)} - ${item.media_count || 0} media</small>
               <small>NIN ${escapeHtml(item.identity_verification_status || "pending")} - Subscription ${escapeHtml(

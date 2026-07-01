@@ -413,8 +413,20 @@ joinForm.addEventListener("submit", async (event) => {
 
   const applicationCode = `F9-A-${Date.now().toString().slice(-6)}`;
   const mediaFiles = selectedFiles("#joinMedia");
+  const fullName = document.querySelector("#joinName").value.trim();
+  const applicantEmail = document.querySelector("#joinEmail").value.trim().toLowerCase();
   const nin = document.querySelector("#joinNin").value.trim();
   const hasNinConsent = document.querySelector("#joinNinConsent").checked;
+
+  if (!fullName || fullName.includes("@")) {
+    setJoinStatus("Enter the artisan's real full name, not an email address.", "error");
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail)) {
+    setJoinStatus("Enter a valid email address for login and application updates.", "error");
+    return;
+  }
 
   if (!/^\d{11}$/.test(nin)) {
     setJoinStatus("Enter a valid 11-digit NIN before submitting.", "error");
@@ -428,7 +440,8 @@ joinForm.addEventListener("submit", async (event) => {
 
   const payload = {
     application_code: applicationCode,
-    full_name: document.querySelector("#joinName").value.trim(),
+    full_name: fullName,
+    applicant_email: applicantEmail,
     trade: document.querySelector("#joinTrade").value,
     state: joinState.value,
     area: joinArea.value,
