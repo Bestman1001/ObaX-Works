@@ -262,6 +262,7 @@ async function loadDashboard(note = null) {
   authPanel.hidden = true;
   dashboardPanel.hidden = false;
   signOutButton.hidden = false;
+  document.body.classList.add("is-signed-in");
   sessionEmail.textContent = currentUser.email || "Signed in";
 
   setNote(dashboardNote, "Loading account...", "");
@@ -434,6 +435,7 @@ function setSignedOut() {
   authPanel.hidden = false;
   dashboardPanel.hidden = true;
   signOutButton.hidden = true;
+  document.body.classList.remove("is-signed-in");
   sessionEmail.textContent = "Signed out";
   currentUser = null;
   currentProfile = null;

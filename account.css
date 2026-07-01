@@ -126,6 +126,16 @@ p {
   padding: clamp(34px, 6vw, 76px) clamp(18px, 4vw, 54px);
 }
 
+.is-signed-in .account-shell {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 920px;
+  padding-top: clamp(28px, 4vw, 54px);
+}
+
+.is-signed-in .intro-panel {
+  display: none;
+}
+
 .intro-panel h1 {
   max-width: 620px;
   margin: 0 0 16px;
@@ -236,6 +246,26 @@ textarea:focus {
   align-items: end;
   justify-content: space-between;
   margin-bottom: 14px;
+}
+
+.dashboard-panel {
+  width: 100%;
+}
+
+.profile-summary-form {
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.profile-summary-form .primary-action {
+  grid-column: 2 / 4;
+  min-width: 160px;
+  box-shadow: none;
+}
+
+.profile-summary-form label:nth-child(3) {
+  grid-column: 1 / 2;
 }
 
 .form-note {
@@ -351,8 +381,14 @@ textarea:focus {
 
 @media (max-width: 920px) {
   .account-shell,
-  .account-grid {
+  .account-grid,
+  .profile-summary-form {
     grid-template-columns: 1fr;
+  }
+
+  .profile-summary-form .primary-action,
+  .profile-summary-form label:nth-child(3) {
+    grid-column: 1 / -1;
   }
 }
 
