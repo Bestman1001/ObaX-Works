@@ -290,7 +290,9 @@ async function loadDashboard(note = null) {
   const [quotesResult, applicationsResult, artisansResult, mediaResult] = await Promise.all([
     supabaseClient
       .from("quote_requests")
-      .select("id, request_code, artisan_name, artisan_category, job_location, urgency, job_details, status, media_count, created_at")
+      .select(
+        "id, request_code, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, job_location, urgency, job_details, status, media_count, created_at",
+      )
       .eq("customer_user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -464,9 +466,11 @@ function renderQuoteDetails(quote, mediaItems, mediaError = "") {
       ? `<article><span>Customer phone</span>${escapeHtml(quote.customer_phone)}</article>`
       : `<article><span>Trade</span>${escapeHtml(quote.artisan_category)}</article>`;
   const actionBlock = quote.viewType === "lead" ? renderQuoteActions(quote) : "";
+  const customerActionBlock = quote.viewType === "customer" ? renderCustomerQuoteActions(quote) : "";
 
   return `
     ${actionBlock}
+    ${customerActionBlock}
     <div class="quote-detail-grid">
       <article><span>Name</span>${escapeHtml(detailName)}</article>
       <article><span>Location</span>${escapeHtml(quote.job_location)}</article>
@@ -487,6 +491,50 @@ function renderQuoteDetails(quote, mediaItems, mediaError = "") {
           : renderQuoteMedia(mediaItems)
       }
     </div>
+  `;
+}
+
+function renderCustomerQuoteActions(quote) {
+  const canCancel = ["new", "contacted"].includes(quote.status);
+  const canComplete = ["contacted", "accepted"].includes(quote.status);
+  const reviewUrl = quote.status === "completed" ? reviewLinkForQuote(quote) : "";
+  const statusText =
+    quote.status === "completed"
+      ? "This job is marked complete. You can now review the artisan and attach proof of work."
+      : quote.status === "cancelled"
+        ? "You cancelled this request. It remains here for your records."
+        : quote.status === "declined"
+          ? "The artisan declined this request. You can choose another artisan from the marketplace."
+          : quote.status === "accepted"
+            ? "The artisan accepted your job. Mark it completed after the work is done."
+            : quote.status === "contacted"
+              ? "The artisan has contacted you. You can cancel or mark complete after the work is done."
+              : "Your request is waiting for the artisan to respond.";
+
+  return `
+    <section class="quote-actions customer-quote-actions" data-quote-id="${escapeHtml(quote.id)}">
+      <div>
+        <span>Customer action</span>
+        <strong>${escapeHtml(statusText)}</strong>
+      </div>
+      <div class="quote-action-buttons">
+        ${
+          canComplete
+            ? `<button class="primary-action" type="button" data-quote-action="completed">Mark completed</button>`
+            : ""
+        }
+        ${
+          reviewUrl
+            ? `<a class="primary-action quote-review-link" href="${escapeHtml(reviewUrl)}">Leave review</a>`
+            : ""
+        }
+        ${
+          canCancel
+            ? `<button class="danger-action" type="button" data-quote-action="cancelled">Cancel request</button>`
+            : ""
+        }
+      </div>
+    </section>
   `;
 }
 
@@ -530,14 +578,15 @@ async function handleQuoteAction(event) {
 
   const actionPanel = button.closest("[data-quote-id]");
   const quote = [...quoteRecords.values()].find((item) => item.id === actionPanel?.dataset.quoteId);
-  if (!quote || quote.viewType !== "lead") return;
+  if (!quote) return;
 
   const nextStatus = button.dataset.quoteAction;
   const originalText = button.textContent;
   button.textContent = "Saving...";
   button.disabled = true;
 
-  const { error } = await supabaseClient.rpc("update_quote_request_status", {
+  const rpcName = quote.viewType === "lead" ? "update_quote_request_status" : "update_customer_quote_status";
+  const { data, error } = await supabaseClient.rpc(rpcName, {
     p_quote_id: quote.id,
     p_status: nextStatus,
   });
@@ -553,11 +602,28 @@ async function handleQuoteAction(event) {
     return;
   }
 
-  quote.status = nextStatus;
-  quoteRecords.set(`lead:${quote.id}`, quote);
+  const updatedQuote = Array.isArray(data) ? data[0] : data;
+  if (updatedQuote) Object.assign(quote, updatedQuote);
+  quote.status = updatedQuote?.status || nextStatus;
+  const quoteKey = `${quote.viewType}:${quote.id}`;
+  quoteRecords.set(quoteKey, quote);
   setNote(dashboardNote, `${quote.request_code} updated to ${nextStatus}.`, "success");
-  await openQuoteDetails(`lead:${quote.id}`);
+  await openQuoteDetails(quoteKey);
   await loadDashboard();
+}
+
+function reviewLinkForQuote(quote) {
+  if (!quote.review_token || !quote.artisan_id) return "";
+
+  const url = new URL("review.html", window.location.href);
+  url.searchParams.set("token", quote.review_token);
+  url.searchParams.set("quote_id", quote.id);
+  url.searchParams.set("artisan_id", quote.artisan_id);
+  url.searchParams.set("artisan_name", quote.artisan_name || "this artisan");
+  url.searchParams.set("artisan_category", quote.artisan_category || "Artisan");
+  url.searchParams.set("artisan_state", quote.artisan_state || "");
+  url.searchParams.set("artisan_area", quote.artisan_area || "");
+  return url.toString();
 }
 
 function renderQuoteMedia(items) {

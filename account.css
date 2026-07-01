@@ -116,6 +116,13 @@ p {
   box-shadow: 0 12px 24px rgba(6, 76, 72, 0.2);
 }
 
+.primary-action:is(a) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .secondary-action {
   color: var(--deep);
   background: white;

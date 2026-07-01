@@ -341,6 +341,47 @@ $$;
 
 grant execute on function public.update_quote_request_status(uuid, text) to authenticated;
 
+create or replace function public.update_customer_quote_status(p_quote_id uuid, p_status text)
+returns public.quote_requests
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_quote public.quote_requests;
+begin
+  if p_status not in ('cancelled', 'completed') then
+    raise exception 'Unsupported customer quote status: %', p_status;
+  end if;
+
+  update public.quote_requests
+  set
+    status = p_status,
+    review_token = case
+      when p_status = 'completed' then coalesce(
+        review_token,
+        'rv-' || lower(replace(request_code, ' ', '-')) || '-' || left(gen_random_uuid()::text, 8)
+      )
+      else review_token
+    end
+  where id = p_quote_id
+    and customer_user_id = auth.uid()
+    and (
+      (p_status = 'cancelled' and status in ('new', 'contacted'))
+      or (p_status = 'completed' and status in ('contacted', 'accepted'))
+    )
+  returning * into updated_quote;
+
+  if updated_quote.id is null then
+    raise exception 'Quote request cannot be updated from its current status.';
+  end if;
+
+  return updated_quote;
+end;
+$$;
+
+grant execute on function public.update_customer_quote_status(uuid, text) to authenticated;
+
 drop policy if exists "Customers can read own quote requests" on public.quote_requests;
 
 create policy "Customers can read own quote requests"
