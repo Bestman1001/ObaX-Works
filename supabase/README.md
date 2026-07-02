@@ -77,7 +77,7 @@ supabase secrets set QOREID_WORKFLOW_ID=1949
 supabase secrets set QOREID_PRODUCT_CODE=fixam-artisan-identity
 ```
 
-When `IDENTITY_PROVIDER_NAME=qoreid` and `QOREID_WORKFLOW_ID` is set, the function creates a QoreID workflow session with `POST https://api.qoreid.com/v1/sessions`. The browser then shows a secure "Continue identity verification" link for the artisan to complete liveness and vNIN inside QoreID's workflow. If `QOREID_WORKFLOW_ID` is not set, the function falls back to the direct NIN face verification endpoint.
+When `IDENTITY_PROVIDER_NAME=qoreid` and `QOREID_WORKFLOW_ID` is set, the function creates a QoreID session with `POST https://api.qoreid.com/v1/sessions` using a short `QOREID_PRODUCT_CODE`. The browser then shows a secure "Continue identity verification" link for the artisan to complete identity checks in QoreID. If `QOREID_WORKFLOW_ID` is not set, the function falls back to the direct NIN face verification endpoint.
 
 Optional secrets:
 

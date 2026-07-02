@@ -215,7 +215,6 @@ async function verifyWithQoreId(
       baseUrl,
       clientId,
       clientSecret,
-      workflowId,
     });
   }
 
@@ -313,7 +312,6 @@ async function createQoreIdWorkflowSession(
     baseUrl: string;
     clientId: string;
     clientSecret: string;
-    workflowId: string;
   },
 ): Promise<VerificationResult> {
   const callbackUrl = Deno.env.get("QOREID_CALLBACK_URL") || "";
@@ -323,7 +321,6 @@ async function createQoreIdWorkflowSession(
   );
   const basicToken = btoa(`${config.clientId}:${config.clientSecret}`);
   const sessionPayload: Record<string, unknown> = {
-    workflowId: numericOrString(config.workflowId),
     productCode,
     customerReference: fallbackReference,
     reference: fallbackReference,
@@ -406,10 +403,6 @@ async function parseProviderJson(response: Response) {
   } catch (_error) {
     return { raw: text.slice(0, 500) };
   }
-}
-
-function numericOrString(value: string) {
-  return /^\d+$/.test(value) ? Number(value) : value;
 }
 
 function shortProviderCode(value: string) {
