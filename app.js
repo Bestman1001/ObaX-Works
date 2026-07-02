@@ -416,6 +416,7 @@ joinForm.addEventListener("submit", async (event) => {
   const selfieFiles = selectedFiles("#joinSelfie", 1);
   const fullName = document.querySelector("#joinName").value.trim();
   const applicantEmail = document.querySelector("#joinEmail").value.trim().toLowerCase();
+  const normalizedPhone = normalizeNigerianPhone(document.querySelector("#joinPhone").value.trim());
   const nin = document.querySelector("#joinNin").value.trim();
   const hasNinConsent = document.querySelector("#joinNinConsent").checked;
 
@@ -426,6 +427,11 @@ joinForm.addEventListener("submit", async (event) => {
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail)) {
     setJoinStatus("Enter a valid email address for login and application updates.", "error");
+    return;
+  }
+
+  if (!/^\+234\d{10}$/.test(normalizedPhone)) {
+    setJoinStatus("Enter a valid Nigerian phone number, for example +2348012345678.", "error");
     return;
   }
 
@@ -456,7 +462,7 @@ joinForm.addEventListener("submit", async (event) => {
     trade: document.querySelector("#joinTrade").value,
     state: joinState.value,
     area: joinArea.value,
-    phone: document.querySelector("#joinPhone").value.trim(),
+    phone: normalizedPhone,
     preferred_plan: document.querySelector("#joinPlan").value,
     years_experience: Number(document.querySelector("#joinExperience").value),
     work_summary: document.querySelector("#joinDetails").value.trim(),
@@ -798,7 +804,7 @@ async function launchQoreIdWorkflow(action) {
         firstname: name.first,
         lastname: name.last,
         email: action.email,
-        phone: action.phone,
+        phone: normalizeNigerianPhone(action.phone),
       },
     });
   } catch (error) {
@@ -829,6 +835,17 @@ function splitFullName(fullName) {
     first: parts[0] || "FixAm",
     last: parts.slice(1).join(" ") || "Artisan",
   };
+}
+
+function normalizeNigerianPhone(value) {
+  const original = String(value || "").trim();
+  const digits = original.replace(/\D+/g, "");
+
+  if (digits.startsWith("234") && digits.length === 13) return `+${digits}`;
+  if (digits.startsWith("0") && digits.length === 11) return `+234${digits.slice(1)}`;
+  if (digits.length === 10) return `+234${digits}`;
+
+  return original;
 }
 
 async function insertWithTimeout(table, payload) {
