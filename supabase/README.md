@@ -66,7 +66,7 @@ supabase secrets set IDENTITY_PROVIDER_URL=https://provider.example/verify-ident
 supabase secrets set IDENTITY_PROVIDER_API_KEY=provider_secret_key
 ```
 
-QoreID direct NIN face verification secrets:
+QoreID workflow/session verification secrets:
 
 ```bash
 supabase secrets set IDENTITY_PROVIDER_NAME=qoreid
@@ -76,7 +76,7 @@ supabase secrets set QOREID_CLIENT_SECRET=your_qoreid_client_secret
 supabase secrets set QOREID_WORKFLOW_ID=1949
 ```
 
-When `IDENTITY_PROVIDER_NAME=qoreid`, the function authenticates with `POST https://api.qoreid.com/token`, then calls `POST https://api.qoreid.com/v1/ng/identities/face-verification/nin` with the applicant NIN and a temporary signed selfie/liveness proof URL.
+When `IDENTITY_PROVIDER_NAME=qoreid` and `QOREID_WORKFLOW_ID` is set, the function creates a QoreID workflow session with `POST https://api.qoreid.com/v1/sessions`. The browser then shows a secure "Continue identity verification" link for the artisan to complete liveness and vNIN inside QoreID's workflow. If `QOREID_WORKFLOW_ID` is not set, the function falls back to the direct NIN face verification endpoint.
 
 Optional secrets:
 
@@ -84,6 +84,8 @@ Optional secrets:
 supabase secrets set IDENTITY_PROVIDER_AUTH_HEADER=Authorization
 supabase secrets set IDENTITY_PROVIDER_MODE=mock
 supabase secrets set QOREID_BASE_URL=https://api.qoreid.com
+supabase secrets set QOREID_CALLBACK_URL=https://your-domain.example/qoreid-webhook
+supabase secrets set QOREID_REDIRECT_URL=https://bestman1001.github.io/FixAm-9ja/account.html
 ```
 
 The older `NIN_PROVIDER_*` names also work for compatibility. `IDENTITY_PROVIDER_MODE=mock` is for local/product testing only. Do not use mock mode for launch. If no provider URL/key is set, applications remain `pending` and the function records that the provider is not configured.

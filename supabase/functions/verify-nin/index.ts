@@ -10,6 +10,7 @@ type VerificationResult = {
   status: "pending" | "verified" | "failed";
   reference: string;
   message: string;
+  verificationUrl?: string;
   providerResponse?: unknown;
 };
 
@@ -105,6 +106,7 @@ Deno.serve(async (req) => {
       status: result.status,
       reference: result.reference,
       message: result.message,
+      verification_url: result.verificationUrl || "",
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Verification failed." }, 500);
@@ -197,6 +199,7 @@ async function verifyWithQoreId(
 ): Promise<VerificationResult> {
   const clientId = Deno.env.get("QOREID_CLIENT_ID");
   const clientSecret = Deno.env.get("QOREID_CLIENT_SECRET");
+  const workflowId = Deno.env.get("QOREID_WORKFLOW_ID");
   const baseUrl = Deno.env.get("QOREID_BASE_URL") || "https://api.qoreid.com";
 
   if (!clientId || !clientSecret) {
@@ -205,6 +208,15 @@ async function verifyWithQoreId(
       reference: fallbackReference,
       message: "QoreID client credentials are not configured yet.",
     };
+  }
+
+  if (workflowId) {
+    return createQoreIdWorkflowSession(input, fallbackReference, {
+      baseUrl,
+      clientId,
+      clientSecret,
+      workflowId,
+    });
   }
 
   if (!input.selfieMediaUrls.length) {
@@ -287,6 +299,84 @@ async function verifyWithQoreId(
   };
 }
 
+async function createQoreIdWorkflowSession(
+  input: {
+    nin: string;
+    fullName: string;
+    phone: string;
+    applicantEmail: string;
+    selfieMediaPaths: string[];
+    selfieMediaUrls: string[];
+  },
+  fallbackReference: string,
+  config: {
+    baseUrl: string;
+    clientId: string;
+    clientSecret: string;
+    workflowId: string;
+  },
+): Promise<VerificationResult> {
+  const callbackUrl = Deno.env.get("QOREID_CALLBACK_URL") || "";
+  const redirectUrl = Deno.env.get("QOREID_REDIRECT_URL") || "https://bestman1001.github.io/FixAm-9ja/account.html";
+  const basicToken = btoa(`${config.clientId}:${config.clientSecret}`);
+  const sessionPayload: Record<string, unknown> = {
+    workflowId: numericOrString(config.workflowId),
+    customerReference: fallbackReference,
+    reference: fallbackReference,
+    redirectUrl,
+    customer: {
+      name: input.fullName,
+      email: input.applicantEmail,
+      phone: input.phone,
+    },
+    metadata: {
+      applicant_email: input.applicantEmail,
+      nin_last4: input.nin.slice(-4),
+      selfie_media_count: input.selfieMediaPaths.length,
+    },
+  };
+
+  if (callbackUrl) {
+    sessionPayload.callbackUrl = callbackUrl;
+  }
+
+  const sessionResponse = await fetch(`${config.baseUrl}/v1/sessions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Basic ${basicToken}`,
+    },
+    body: JSON.stringify(sessionPayload),
+  });
+
+  const providerResponse = await parseProviderJson(sessionResponse);
+  const sessionReference = extractSessionReference(providerResponse) || fallbackReference;
+  const verificationUrl = extractVerificationUrl(providerResponse);
+
+  if (!sessionResponse.ok) {
+    const detail = providerMessage(providerResponse);
+    return {
+      status: "failed",
+      reference: sessionReference,
+      message: detail
+        ? `QoreID workflow session failed with HTTP ${sessionResponse.status}: ${detail}`
+        : `QoreID workflow session failed with HTTP ${sessionResponse.status}.`,
+      providerResponse,
+    };
+  }
+
+  return {
+    status: "pending",
+    reference: sessionReference,
+    verificationUrl,
+    message: verificationUrl
+      ? "QoreID verification session is ready. Open the secure verification link to complete liveness and vNIN."
+      : "QoreID verification session was created. Complete the QoreID workflow before marketplace visibility.",
+    providerResponse,
+  };
+}
+
 async function createVerificationProofUrls(supabaseAdmin: ReturnType<typeof createClient>, paths: string[]) {
   const urls: string[] = [];
 
@@ -314,6 +404,10 @@ async function parseProviderJson(response: Response) {
   }
 }
 
+function numericOrString(value: string) {
+  return /^\d+$/.test(value) ? Number(value) : value;
+}
+
 function extractAccessToken(response: unknown) {
   if (!response || typeof response !== "object") return "";
 
@@ -333,6 +427,56 @@ function extractAccessToken(response: unknown) {
       data.token ||
       data.bearerToken ||
       data.jwt ||
+      "",
+  );
+}
+
+function extractSessionReference(response: unknown) {
+  if (!response || typeof response !== "object") return "";
+
+  const source = response as Record<string, unknown>;
+  const data = typeof source.data === "object" && source.data
+    ? source.data as Record<string, unknown>
+    : {};
+
+  return String(
+    source.reference ||
+      source.customerReference ||
+      source.customer_reference ||
+      source.sessionId ||
+      source.session_id ||
+      source.id ||
+      data.reference ||
+      data.customerReference ||
+      data.customer_reference ||
+      data.sessionId ||
+      data.session_id ||
+      data.id ||
+      "",
+  );
+}
+
+function extractVerificationUrl(response: unknown) {
+  if (!response || typeof response !== "object") return "";
+
+  const source = response as Record<string, unknown>;
+  const data = typeof source.data === "object" && source.data
+    ? source.data as Record<string, unknown>
+    : {};
+
+  return String(
+    source.url ||
+      source.link ||
+      source.verificationUrl ||
+      source.verification_url ||
+      source.redirectUrl ||
+      source.redirect_url ||
+      data.url ||
+      data.link ||
+      data.verificationUrl ||
+      data.verification_url ||
+      data.redirectUrl ||
+      data.redirect_url ||
       "",
   );
 }
@@ -424,7 +568,7 @@ function summarizeProviderResponse(response: unknown) {
     verified: source.verified ?? source.success ?? null,
     face_match: faceCheck.match ?? null,
     match_score: faceCheck.match_score ?? null,
-    reference: source.reference || source.request_id || source.transaction_id || source.id || null,
+    reference: source.reference || source.request_id || source.transaction_id || source.sessionId || source.id || null,
     message: source.message || source.description || null,
   };
 }

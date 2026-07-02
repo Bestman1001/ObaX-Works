@@ -743,6 +743,24 @@ footer {
   font-weight: 800;
 }
 
+.status-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 10px 14px;
+  width: fit-content;
+  border-radius: 8px;
+  background: var(--deep);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+.status-action-link:hover {
+  background: var(--accent);
+}
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   border-radius: 8px;

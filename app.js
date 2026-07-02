@@ -537,14 +537,13 @@ joinForm.addEventListener("submit", async (event) => {
     role: "artisan",
   });
 
-  setJoinStatus(
-    mediaResult.error
-      ? `Application ${applicationCode} received, but media upload needs retry: ${mediaResult.error}`
-      : `Application ${applicationCode} received with ${mediaResult.count} media file${
-          mediaResult.count === 1 ? "" : "s"
-        }. ${verificationStatusMessage(verificationResult)}`,
-    mediaResult.error || verificationResult.status === "failed" ? "error" : "success",
-  );
+  const finalMessage = mediaResult.error
+    ? `Application ${applicationCode} received, but media upload needs retry: ${mediaResult.error}`
+    : `Application ${applicationCode} received with ${mediaResult.count} media file${
+        mediaResult.count === 1 ? "" : "s"
+      }. ${verificationStatusMessage(verificationResult)}`;
+  const finalType = mediaResult.error || verificationResult.status === "failed" ? "error" : "success";
+  setJoinStatus(finalMessage, finalType, verificationResult.verification_url);
   joinSubmitButton.textContent = "Application sent";
   joinForm.reset();
   syncJoinAreas();
@@ -734,11 +733,22 @@ function setQuoteStatus(message, type) {
   if (type === "error") quoteNote.classList.add("error-note");
 }
 
-function setJoinStatus(message, type) {
+function setJoinStatus(message, type, actionUrl = "") {
   joinNote.textContent = message;
   joinNote.classList.remove("success-note", "error-note");
   if (type === "success") joinNote.classList.add("success-note");
   if (type === "error") joinNote.classList.add("error-note");
+
+  if (actionUrl) {
+    const link = document.createElement("a");
+    link.href = actionUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.className = "status-action-link";
+    link.textContent = "Continue identity verification";
+    joinNote.appendChild(document.createElement("br"));
+    joinNote.appendChild(link);
+  }
 }
 
 async function insertWithTimeout(table, payload) {
