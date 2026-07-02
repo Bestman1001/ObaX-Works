@@ -11,6 +11,7 @@ type VerificationResult = {
   reference: string;
   message: string;
   verificationUrl?: string;
+  sdkSessionToken?: string;
   providerResponse?: unknown;
 };
 
@@ -107,6 +108,7 @@ Deno.serve(async (req) => {
       reference: result.reference,
       message: result.message,
       verification_url: result.verificationUrl || "",
+      sdk_session_token: result.sdkSessionToken || "",
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Verification failed." }, 500);
@@ -314,32 +316,16 @@ async function createQoreIdWorkflowSession(
     clientSecret: string;
   },
 ): Promise<VerificationResult> {
-  const callbackUrl = Deno.env.get("QOREID_CALLBACK_URL") || "";
-  const redirectUrl = Deno.env.get("QOREID_REDIRECT_URL") || "https://bestman1001.github.io/FixAm-9ja/account.html";
-  const productCode = shortProviderCode(
-    Deno.env.get("QOREID_PRODUCT_CODE") || "fixam-artisan-identity",
-  );
+  const workflowId = Deno.env.get("QOREID_WORKFLOW_ID") || "";
   const basicToken = btoa(`${config.clientId}:${config.clientSecret}`);
   const sessionPayload: Record<string, unknown> = {
-    productCode,
-    customerReference: fallbackReference,
+    type: "workflow",
+    workflowId: numericValue(workflowId) || workflowId,
     reference: fallbackReference,
-    redirectUrl,
-    customer: {
-      name: input.fullName,
-      email: input.applicantEmail,
-      phone: input.phone,
-    },
-    metadata: {
-      applicant_email: input.applicantEmail,
-      nin_last4: input.nin.slice(-4),
-      selfie_media_count: input.selfieMediaPaths.length,
-    },
+    subjectRef: fallbackReference,
+    ttlSeconds: 600,
+    maxAttempts: 3,
   };
-
-  if (callbackUrl) {
-    sessionPayload.callbackUrl = callbackUrl;
-  }
 
   const sessionResponse = await fetch(`${config.baseUrl}/v1/sessions`, {
     method: "POST",
@@ -354,6 +340,7 @@ async function createQoreIdWorkflowSession(
   const providerResponse = await parseProviderJson(sessionResponse);
   const sessionReference = extractSessionReference(providerResponse) || fallbackReference;
   const verificationUrl = extractVerificationUrl(providerResponse);
+  const sdkSessionToken = extractSdkSessionToken(providerResponse);
 
   if (!sessionResponse.ok) {
     const detail = providerMessage(providerResponse);
@@ -371,9 +358,12 @@ async function createQoreIdWorkflowSession(
     status: "pending",
     reference: sessionReference,
     verificationUrl,
-    message: verificationUrl
-      ? "QoreID verification session is ready. Open the secure verification link to complete liveness and vNIN."
-      : "QoreID verification session was created. Complete the QoreID workflow before marketplace visibility.",
+    sdkSessionToken,
+    message: sdkSessionToken
+      ? "QoreID verification session is ready. Start the secure liveness and vNIN check to continue."
+      : verificationUrl
+        ? "QoreID verification session is ready. Open the secure verification link to complete liveness and vNIN."
+        : "QoreID verification session was created. Complete the QoreID workflow before marketplace visibility.",
     providerResponse,
   };
 }
@@ -412,6 +402,11 @@ function shortProviderCode(value: string) {
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 100) || "fixam-artisan-identity";
+}
+
+function numericValue(value: string) {
+  const number = Number(value);
+  return Number.isFinite(number) && value.trim() !== "" ? number : null;
 }
 
 function extractAccessToken(response: unknown) {
@@ -483,6 +478,27 @@ function extractVerificationUrl(response: unknown) {
       data.verification_url ||
       data.redirectUrl ||
       data.redirect_url ||
+      "",
+  );
+}
+
+function extractSdkSessionToken(response: unknown) {
+  if (!response || typeof response !== "object") return "";
+
+  const source = response as Record<string, unknown>;
+  const data = typeof source.data === "object" && source.data
+    ? source.data as Record<string, unknown>
+    : {};
+
+  return String(
+    source.sdkSessionToken ||
+      source.sdk_session_token ||
+      source.sessionToken ||
+      source.session_token ||
+      data.sdkSessionToken ||
+      data.sdk_session_token ||
+      data.sessionToken ||
+      data.session_token ||
       "",
   );
 }
@@ -575,6 +591,8 @@ function summarizeProviderResponse(response: unknown) {
     face_match: faceCheck.match ?? null,
     match_score: faceCheck.match_score ?? null,
     reference: source.reference || source.request_id || source.transaction_id || source.sessionId || source.id || null,
+    session_id: source.sessionId || source.session_id || null,
+    workflow_id: source.workflowId || source.worflowId || null,
     message: source.message || source.description || null,
   };
 }

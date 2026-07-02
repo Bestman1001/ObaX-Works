@@ -543,7 +543,14 @@ joinForm.addEventListener("submit", async (event) => {
         mediaResult.count === 1 ? "" : "s"
       }. ${verificationStatusMessage(verificationResult)}`;
   const finalType = mediaResult.error || verificationResult.status === "failed" ? "error" : "success";
-  setJoinStatus(finalMessage, finalType, verificationResult.verification_url);
+  setJoinStatus(finalMessage, finalType, {
+    url: verificationResult.verification_url,
+    sdkSessionToken: verificationResult.sdk_session_token,
+    reference: verificationResult.reference || applicationCode,
+    fullName,
+    email: applicantEmail,
+    phone: payload.phone,
+  });
   joinSubmitButton.textContent = "Application sent";
   joinForm.reset();
   syncJoinAreas();
@@ -733,11 +740,25 @@ function setQuoteStatus(message, type) {
   if (type === "error") quoteNote.classList.add("error-note");
 }
 
-function setJoinStatus(message, type, actionUrl = "") {
+function setJoinStatus(message, type, action = "") {
   joinNote.textContent = message;
   joinNote.classList.remove("success-note", "error-note");
   if (type === "success") joinNote.classList.add("success-note");
   if (type === "error") joinNote.classList.add("error-note");
+
+  const actionUrl = typeof action === "string" ? action : action?.url;
+  const sdkSessionToken = typeof action === "object" ? action?.sdkSessionToken : "";
+
+  if (sdkSessionToken) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "status-action-link";
+    button.textContent = "Start identity check";
+    button.addEventListener("click", () => launchQoreIdWorkflow(action));
+    joinNote.appendChild(document.createElement("br"));
+    joinNote.appendChild(button);
+    return;
+  }
 
   if (actionUrl) {
     const link = document.createElement("a");
@@ -749,6 +770,65 @@ function setJoinStatus(message, type, actionUrl = "") {
     joinNote.appendChild(document.createElement("br"));
     joinNote.appendChild(link);
   }
+}
+
+async function launchQoreIdWorkflow(action) {
+  try {
+    setJoinStatus("Opening secure QoreID identity check...", "");
+    const QoreID = await loadQoreIdSdk();
+    const name = splitFullName(action.fullName || "");
+
+    if (typeof QoreID.on === "function" && !QoreID.__fixamListenersAttached) {
+      QoreID.on("success", () => {
+        setJoinStatus("Identity check completed. FixAm 9ja will confirm the verification result shortly.", "success");
+      });
+      QoreID.on("error", () => {
+        setJoinStatus("QoreID could not complete the identity check. Please try again or FixAm 9ja will review manually.", "error", action);
+      });
+      QoreID.on("close", () => {
+        setJoinStatus("Identity check was closed before completion. You can start it again when ready.", "error", action);
+      });
+      QoreID.__fixamListenersAttached = true;
+    }
+
+    await QoreID.start({
+      token: action.sdkSessionToken,
+      customerReference: action.reference,
+      applicantData: {
+        firstname: name.first,
+        lastname: name.last,
+        email: action.email,
+        phone: action.phone,
+      },
+    });
+  } catch (error) {
+    setJoinStatus(
+      `QoreID identity check could not open: ${error.message || "SDK unavailable"}. FixAm 9ja will review manually.`,
+      "error",
+    );
+  }
+}
+
+async function loadQoreIdSdk() {
+  if (window.QoreID) return window.QoreID;
+
+  const module = await import("https://esm.sh/@qore-id/web-sdk");
+  const QoreID = module.default || module.QoreID || window.QoreID;
+
+  if (!QoreID || typeof QoreID.start !== "function") {
+    throw new Error("QoreID Web SDK did not load");
+  }
+
+  window.QoreID = QoreID;
+  return QoreID;
+}
+
+function splitFullName(fullName) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    first: parts[0] || "FixAm",
+    last: parts.slice(1).join(" ") || "Artisan",
+  };
 }
 
 async function insertWithTimeout(table, payload) {
