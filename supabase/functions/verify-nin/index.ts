@@ -318,9 +318,13 @@ async function createQoreIdWorkflowSession(
 ): Promise<VerificationResult> {
   const callbackUrl = Deno.env.get("QOREID_CALLBACK_URL") || "";
   const redirectUrl = Deno.env.get("QOREID_REDIRECT_URL") || "https://bestman1001.github.io/FixAm-9ja/account.html";
+  const productCode = shortProviderCode(
+    Deno.env.get("QOREID_PRODUCT_CODE") || "fixam-artisan-identity",
+  );
   const basicToken = btoa(`${config.clientId}:${config.clientSecret}`);
   const sessionPayload: Record<string, unknown> = {
     workflowId: numericOrString(config.workflowId),
+    productCode,
     customerReference: fallbackReference,
     reference: fallbackReference,
     redirectUrl,
@@ -406,6 +410,15 @@ async function parseProviderJson(response: Response) {
 
 function numericOrString(value: string) {
   return /^\d+$/.test(value) ? Number(value) : value;
+}
+
+function shortProviderCode(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100) || "fixam-artisan-identity";
 }
 
 function extractAccessToken(response: unknown) {
