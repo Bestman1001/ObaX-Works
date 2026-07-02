@@ -582,7 +582,7 @@ function verificationStatusMessage(result) {
   }
 
   if (result.status === "failed") {
-    return "Identity verification could not be completed. FixAm 9ja will review it manually.";
+    return `${result.message || "Identity verification could not be completed."} FixAm 9ja will review it manually.`;
   }
 
   return `${result.message || "Identity verification is pending."} Next step: subscription activation before listing.`;

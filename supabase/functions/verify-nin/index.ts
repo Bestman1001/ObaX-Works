@@ -230,10 +230,13 @@ async function verifyWithQoreId(
   const tokenPayload = await parseProviderJson(tokenResponse);
 
   if (!tokenResponse.ok) {
+    const detail = providerMessage(tokenPayload);
     return {
       status: "failed",
       reference: fallbackReference,
-      message: `QoreID token request failed with HTTP ${tokenResponse.status}.`,
+      message: detail
+        ? `QoreID token request failed with HTTP ${tokenResponse.status}: ${detail}`
+        : `QoreID token request failed with HTTP ${tokenResponse.status}.`,
       providerResponse: tokenPayload,
     };
   }
@@ -264,10 +267,13 @@ async function verifyWithQoreId(
   const providerResponse = await parseProviderJson(verificationResponse);
 
   if (!verificationResponse.ok) {
+    const detail = providerMessage(providerResponse);
     return {
       status: "failed",
       reference: fallbackReference,
-      message: `QoreID NIN face verification failed with HTTP ${verificationResponse.status}.`,
+      message: detail
+        ? `QoreID NIN face verification failed with HTTP ${verificationResponse.status}: ${detail}`
+        : `QoreID NIN face verification failed with HTTP ${verificationResponse.status}.`,
       providerResponse,
     };
   }
@@ -312,12 +318,46 @@ function extractAccessToken(response: unknown) {
   if (!response || typeof response !== "object") return "";
 
   const source = response as Record<string, unknown>;
+  const data = typeof source.data === "object" && source.data
+    ? source.data as Record<string, unknown>
+    : {};
+
   return String(
     source.accessToken ||
       source.access_token ||
       source.token ||
       source.bearerToken ||
       source.jwt ||
+      data.accessToken ||
+      data.access_token ||
+      data.token ||
+      data.bearerToken ||
+      data.jwt ||
+      "",
+  );
+}
+
+function providerMessage(response: unknown) {
+  if (!response || typeof response !== "object") return "";
+
+  const source = response as Record<string, unknown>;
+  const status = typeof source.status === "object" && source.status
+    ? source.status as Record<string, unknown>
+    : {};
+  const data = typeof source.data === "object" && source.data
+    ? source.data as Record<string, unknown>
+    : {};
+
+  return String(
+    source.message ||
+      source.error ||
+      source.description ||
+      source.statusMessage ||
+      source.raw ||
+      status.message ||
+      status.description ||
+      data.message ||
+      data.error ||
       "",
   );
 }
