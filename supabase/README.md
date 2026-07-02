@@ -78,12 +78,21 @@ supabase secrets set QOREID_WORKFLOW_ID=1953
 
 When `IDENTITY_PROVIDER_NAME=qoreid` and `QOREID_WORKFLOW_ID` is set, the function mints a QoreID workflow SDK session token with `POST https://api.qoreid.com/v1/sessions` using `{ "type": "workflow", "workflowId": 1953, "reference": "..." }`. Do not send `productCode` for workflow sessions. The browser then starts the QoreID Web SDK with the short-lived `sdkSessionToken`. If `QOREID_WORKFLOW_ID` is not set, the function falls back to the direct NIN face verification endpoint.
 
+QoreID webhook for automatic artisan verification:
+
+```text
+https://bqzbadvqozpmdkmdenly.supabase.co/functions/v1/qoreid-webhook
+```
+
+Add this URL to the QoreID workflow webhook settings. When QoreID posts a successful liveness + vNIN result, FixAm 9ja automatically marks the artisan application as verified, creates or updates the artisan profile, and keeps the public listing hidden until subscription status is active.
+
 Optional secrets:
 
 ```bash
 supabase secrets set IDENTITY_PROVIDER_AUTH_HEADER=Authorization
 supabase secrets set IDENTITY_PROVIDER_MODE=mock
 supabase secrets set QOREID_BASE_URL=https://api.qoreid.com
+supabase secrets set QOREID_WEBHOOK_SECRET=optional_shared_secret
 ```
 
 The older `NIN_PROVIDER_*` names also work for compatibility. `IDENTITY_PROVIDER_MODE=mock` is for local/product testing only. Do not use mock mode for launch. If no provider URL/key is set, applications remain `pending` and the function records that the provider is not configured.
