@@ -1,2 +1,5 @@
 [functions.verify-nin]
 verify_jwt = false
+
+[functions.qoreid-webhook]
+verify_jwt = false

@@ -13,6 +13,10 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  if (req.method === "GET" || req.method === "HEAD") {
+    return json({ ok: true, service: "FixAm 9ja QoreID webhook" });
+  }
+
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
@@ -23,7 +27,7 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized webhook." }, 401);
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -36,14 +40,23 @@ Deno.serve(async (req) => {
     const providerMessage = extractProviderMessage(body);
 
     if (!references.length) {
-      return json({ error: "No QoreID reference was found in the webhook payload." }, 400);
+      return json({
+        ok: true,
+        ignored: true,
+        message: "Webhook endpoint is ready. No QoreID reference was found in this payload.",
+      });
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
     const application = await findApplicationByReferences(supabaseAdmin, references);
 
     if (!application) {
-      return json({ error: "No matching artisan application found.", references }, 404);
+      return json({
+        ok: true,
+        ignored: true,
+        references,
+        message: "Webhook received, but no matching artisan application was found.",
+      });
     }
 
     const now = new Date().toISOString();
